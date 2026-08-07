@@ -1,0 +1,17 @@
+Top pick: A mini container runtime (a tiny "Docker from scratch")
+
+What it is: A CLI tool that runs a process in isolation — its own filesystem view, its own process ID namespace, restricted CPU/memory — using raw Linux primitives, no Docker/libcontainer involved. This is literally what Docker was originally built on top of.
+
+Why it maps to your whole interest list, concretely:
+
+Operating systems — you'll use Linux namespaces (unshare(), clone() with flags for PID/mount/UTS namespaces) to isolate a process's view of the system, and cgroups (writing to /sys/fs/cgroup/) to limit CPU/memory — this is OS-level isolation, not app-level code
+Computer architecture — process/memory isolation forces you to actually understand virtual memory, address spaces, and how the kernel separates "what a process thinks it sees" from physical reality
+Networking (stretch goal) — give your container its own virtual network interface (veth pairs) so containers can talk to each other or the host — real Linux networking internals
+Backend development — containers are the backend/infra world now; understanding this from the inside is a genuine differentiator over candidates who only know docker run
+Python — build a thin Python CLI/wrapper on top of your C++ core (using pybind11 or simple subprocess calls) — gives you a legitimate reason to touch Python again and show C++/Python interop, which is itself a real skill
+
+Realistic 2-3 week scope:
+
+Week 1: chroot/pivot_root (filesystem isolation) + PID namespace (unshare(CLONE_NEWPID)) — get a process running that thinks it's PID 1 and can't see the host's files
+Week 2: cgroups — limit your contained process's memory/CPU, and prove it (spawn something memory-hungry, watch it get capped/killed)
+Week 3: a Python CLI wrapper (mycontainer run --mem=100m ubuntu-rootfs /bin/bash) + stretch: basic network namespace with a veth pair so the container can reach the internet
