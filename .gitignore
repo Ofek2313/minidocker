@@ -4,6 +4,7 @@ bin/
 lib/
 out/
 
+
 # CMake generated files
 CMakeFiles/
 CMakeCache.txt
@@ -21,7 +22,7 @@ CompileCommands.json
 *.exe
 clone_test
 minidocker
-
+compile_commands.json
 # IDE and Editor files
 .vscode/
 .idea/
