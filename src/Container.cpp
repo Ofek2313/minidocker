@@ -10,12 +10,17 @@
 
 int Container::child_function(void *args) {
   RootFileSystem rfs;
+  rfs.DownloadAlpineEnvironment();
   std::cout << getpid() << std::endl;
   rfs.setRoot(getpid());
+  char *arg[] = {(char *)"pwd", nullptr};
+  execvp(arg[0], arg);
+  perror("execvp failed");
   return 0;
 }
 
 void Container::InitContainer() {
+
   NamespaceConfig ns;
   ns.isolateMount().isolatePid();
 
