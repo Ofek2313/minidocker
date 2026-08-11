@@ -1,10 +1,20 @@
 
+#include <archive.h>
 #include <curl/curl.h>
 #include <curl/easy.h>
 #include <filesystem>
 #include <memory>
-#include <string_view>
 #include <zlib.h>
+
+enum class DownloadStatus {
+  Success,
+  DownloadFailed,
+  FileNotFound,
+  FileFailedToOpen,
+  FileCorrupted,
+
+};
+
 class Downloader {
 private:
   struct GzFileDeleter {
@@ -13,6 +23,12 @@ private:
 
   struct CurlDeleter {
     void operator()(CURL *curl) { curl_easy_cleanup(curl); }
+  };
+  struct ArchiveReadDeleter {
+    void operator()(archive *a) { archive_read_free(a); }
+  };
+  struct ArchiveWriteDeleter {
+    void operator()(archive *w) { archive_write_free(w); }
   };
 
   std::unique_ptr<CURL, CurlDeleter> handle;
@@ -23,7 +39,7 @@ private:
 
 public:
   Downloader();
-  void DownloadImage(std::string_view URL, std::string_view Path);
-  void DeCompressArchive(std::string_view Path);
+  DownloadStatus DownloadImage(const std::string &URL, const filePath &Path);
+  DownloadStatus DeCompressArchive(const filePath &Path, const filePath &Dest);
   void UnArchive();
 };

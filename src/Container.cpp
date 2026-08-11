@@ -1,7 +1,6 @@
 #include "Container.h"
 #include "NamespaceConfig.h"
 #include "RootFileSystem.h"
-#include <iostream>
 #include <memory>
 #include <sched.h>
 #include <sys/syscall.h>
@@ -10,12 +9,16 @@
 
 int Container::child_function(void *args) {
   RootFileSystem rfs;
-  rfs.DownloadAlpineEnvironment();
-  std::cout << getpid() << std::endl;
+  if (!rfs.IsRootFsInitialized()) {
+    rfs.CreateRootDirectory();
+    rfs.DownloadAlpineEnvironment();
+  } // If Root FileSystem Not Initialized download and setup environment;
+
   rfs.setRoot(getpid());
-  char *arg[] = {(char *)"pwd", nullptr};
+  rfs.MountProcFolder();
+  char *arg[] = {(char *)"/bin/ps", (char *)"aux", nullptr};
   execvp(arg[0], arg);
-  perror("execvp failed");
+
   return 0;
 }
 
