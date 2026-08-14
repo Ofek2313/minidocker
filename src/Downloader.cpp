@@ -1,6 +1,7 @@
 #include "Downloader.h"
 #include <archive.h>
 #include <archive_entry.h>
+#include <cerrno>
 #include <cstdlib>
 #include <curl/curl.h>
 #include <curl/easy.h>
@@ -8,6 +9,9 @@
 #include <fstream>
 #include <iostream>
 #include <memory>
+#include <stdexcept>
+#include <string>
+#include <system_error>
 
 Downloader::Downloader() : handle(curl_easy_init()) {
   if (!handle) {
@@ -21,11 +25,15 @@ size_t Downloader::writeToStream(void *ptr, size_t size, size_t nmemb,
   return nmemb * size;
 }
 
-DownloadStatus Downloader::DownloadImage(const std::string &URL,
-                                         const filePath &Path) {
+void Downloader::DownloadImage(const std::string &URL, const filePath &Path) {
 
   filePath des(Path);
   std::ofstream file(des, std::ios::binary);
+  if (!file.is_open()) {
+    throw std::system_error(errno, std::generic_category(),
+                            "Destination File Failed To Open: " +
+                                Path.string());
+  }
   curl_easy_setopt(handle.get(), CURLOPT_URL, URL.c_str());
   curl_easy_setopt(handle.get(), CURLOPT_WRITEFUNCTION, writeToStream);
   curl_easy_setopt(handle.get(), CURLOPT_WRITEDATA, &file);
@@ -35,15 +43,14 @@ DownloadStatus Downloader::DownloadImage(const std::string &URL,
     std::cerr << "download failed" << "\n";
     std::cerr << "Download error code [" << result
               << "]: " << curl_easy_strerror(result) << "\n";
-    return DownloadStatus::DownloadFailed;
+    throw std::runtime_error(std::string("Download Failed: ") +
+                             curl_easy_strerror(result));
   }
-  return DownloadStatus::Success;
 }
-DownloadStatus Downloader::DeCompressArchive(const filePath &Path,
-                                             const filePath &Dest) {
+void Downloader::DeCompressArchive(const filePath &Path, const filePath &Dest) {
 
   if (!std::filesystem::exists(Path) || !std::filesystem::exists(Dest)) {
-    return DownloadStatus::FileNotFound;
+    throw std::runtime_error("File Do Not Exist");
   }
 
   std::unique_ptr<archive, ArchiveReadDeleter> a(archive_read_new());
@@ -64,7 +71,8 @@ DownloadStatus Downloader::DeCompressArchive(const filePath &Path,
 
   if (archive_read_open_filename(a.get(), Path.c_str(), 10240) ==
       ARCHIVE_FATAL) {
-    return DownloadStatus::FileFailedToOpen;
+    throw std::runtime_error(std::string("failed to open fail") +
+                             archive_error_string(a.get()));
   }
   while (archive_read_next_header(a.get(), &entry) == ARCHIVE_OK) {
 
@@ -82,5 +90,4 @@ DownloadStatus Downloader::DeCompressArchive(const filePath &Path,
     archive_write_finish_entry(write.get());
     // go over to next header
   }
-  return DownloadStatus::Success;
 }

@@ -1,9 +1,12 @@
 #include "RootFileSystem.h"
 #include "Downloader.h"
+#include <cerrno>
 #include <cstddef>
+#include <exception>
 #include <filesystem>
 #include <string_view>
 #include <sys/mount.h>
+#include <system_error>
 #include <unistd.h>
 #include <zlib.h>
 
@@ -24,8 +27,11 @@ void RootFileSystem::DownloadAlpineEnvironment() {
       "https://dl-cdn.alpinelinux.org/alpine/latest-stable/releases/x86_64/"
       "alpine-minirootfs-3.24.0-x86_64.tar.gz";
   std::string PATH = "/tmp/alpine.tar.gz";
+
   downloader.DownloadImage(ALPINEURL, PATH);
   downloader.DeCompressArchive(PATH, "/var/lib/minidocker");
+
+  // error
 }
 bool RootFileSystem::IsRootFsInitialized() {
 
@@ -39,5 +45,8 @@ bool RootFileSystem::CreateRootDirectory() {
   return std::filesystem::create_directory(ROOTPATH.data());
 }
 void RootFileSystem::MountProcFolder() {
-  mount("proc", "/proc", "proc", 0, NULL);
+  if (mount("proc", "/proc", "proc", 0, NULL) == -1) {
+    throw std::system_error(errno, std::generic_category(),
+                            "Proc Folder Failed To Mount");
+  }
 }

@@ -39,7 +39,7 @@ private:
 
 public:
   Downloader();
-  DownloadStatus DownloadImage(const std::string &URL, const filePath &Path);
-  DownloadStatus DeCompressArchive(const filePath &Path, const filePath &Dest);
+  void DownloadImage(const std::string &URL, const filePath &Path);
+  void DeCompressArchive(const filePath &Path, const filePath &Dest);
   void UnArchive();
 };
