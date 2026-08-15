@@ -3,6 +3,7 @@
 #include "RootFileSystem.h"
 #include <cstring>
 #include <exception>
+#include <iostream>
 #include <memory>
 #include <sched.h>
 #include <sys/syscall.h>
@@ -54,5 +55,17 @@ void Container::InitContainer() {
       clone(child_function, stack.get() + stackSize, ns.getFlags(), &Fd);
   close(fd[1]);
   processId = pid;
+  char errBuffer[8192];
+  std::string errText = "";
+  int bytes = read(fd[0], errBuffer, sizeof(errBuffer));
+  if (bytes > 0) {
+    errText.append(errBuffer);
+    while ((bytes = read(fd[0], errBuffer, sizeof(errBuffer)) > 0)) {
+      errText.append((errBuffer));
+    }
+    std::cerr << errText << std::endl;
+  }
+  close(fd[0]);
+  std::cout << "Container Setup!" << std::endl;
   wait(NULL);
 }

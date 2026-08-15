@@ -2,7 +2,6 @@
 #include "Downloader.h"
 #include <cerrno>
 #include <cstddef>
-#include <exception>
 #include <filesystem>
 #include <string_view>
 #include <sys/mount.h>
@@ -35,11 +34,7 @@ void RootFileSystem::DownloadAlpineEnvironment() {
 }
 bool RootFileSystem::IsRootFsInitialized() {
 
-  if (!std::filesystem::is_directory(ROOTPATH.data())) {
-
-    return false;
-  }
-  return true;
+  return std::filesystem::is_directory(ROOTPATH.data());
 }
 bool RootFileSystem::CreateRootDirectory() {
   return std::filesystem::create_directory(ROOTPATH.data());

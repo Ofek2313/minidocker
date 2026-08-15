@@ -15,7 +15,7 @@
 
 Downloader::Downloader() : handle(curl_easy_init()) {
   if (!handle) {
-    std::cerr << "Init Failed" << "\n";
+    throw std::runtime_error("Curl Failed To Init");
   }
 }
 size_t Downloader::writeToStream(void *ptr, size_t size, size_t nmemb,
@@ -84,7 +84,11 @@ void Downloader::DeCompressArchive(const filePath &Path, const filePath &Dest) {
 
     while ((bytes = archive_read_data(a.get(), buffer, sizeof(buffer))) > 0) {
       // write to file
-      archive_write_data(write.get(), buffer, bytes);
+      int written = archive_write_data(write.get(), buffer, bytes);
+      if (written < 0) {
+        throw std::runtime_error(std::string("File Corrupted") +
+                                 archive_error_string(a.get()));
+      }
     }
 
     archive_write_finish_entry(write.get());

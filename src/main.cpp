@@ -23,7 +23,7 @@ int child_function(void *arg) {
 }
 
 int main(int argc, char *argv[]) {
-  std::cout << __cplusplus << std::endl;
+
   Container container;
   container.InitContainer();
   return 0;
