@@ -1,6 +1,9 @@
 #include "Container.h"
+#include "CgroupManager.h"
 #include "NamespaceConfig.h"
 #include "RootFileSystem.h"
+#include <algorithm>
+#include <cstddef>
 #include <cstring>
 #include <exception>
 #include <iostream>
@@ -9,6 +12,7 @@
 #include <sys/syscall.h>
 #include <sys/wait.h>
 #include <unistd.h>
+#include <vector>
 
 struct FileDescriptorArgs {
   int readFd;
@@ -19,7 +23,6 @@ int Container::child_function(void *args) {
   FileDescriptorArgs *Fd = static_cast<FileDescriptorArgs *>(args);
   close(Fd->readFd);
   try {
-
     RootFileSystem rfs;
     if (!rfs.IsRootFsInitialized()) {
       rfs.CreateRootDirectory();
@@ -28,6 +31,10 @@ int Container::child_function(void *args) {
 
     rfs.setRoot(getpid());
     rfs.MountProcFolder();
+    // auto memoryBuffer =
+    // std::make_shared<std::vector<std::byte>>(1024 * 1024 * 1024);
+
+    // std::fill_n(memoryBuffer->data(), 1024 * 1024 * 1024, std::byte{0xA});
     char *arg[] = {(char *)"/bin/ps", (char *)"aux", nullptr};
     execvp(arg[0], arg);
   } catch (const std::exception &ex) {
@@ -51,6 +58,11 @@ void Container::InitContainer() {
   constexpr std::size_t stackSize = 1024 * 1024;
   auto stack = std::make_unique<std::byte[]>(stackSize);
 
+  CgroupManager CgroupManager("minidocker");
+  CgroupManager.CreateCgroup();
+  CgroupManager.LimitMemoryUsage("512M");
+  CgroupManager.LimitCpuBanwidth(0.5, 100000);
+  CgroupManager.AddProc(getpid());
   pid_t pid =
       clone(child_function, stack.get() + stackSize, ns.getFlags(), &Fd);
   close(fd[1]);
