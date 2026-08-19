@@ -25,6 +25,7 @@ int child_function(void *arg) {
 int main(int argc, char *argv[]) {
 
   Container container;
-  container.InitContainer();
+  std::vector<std::string> a = {"ps", "aux"};
+  container.Run(a);
   return 0;
 }

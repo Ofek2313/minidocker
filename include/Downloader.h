@@ -1,4 +1,5 @@
 
+#include "Config.h"
 #include <archive.h>
 #include <curl/curl.h>
 #include <curl/easy.h>
@@ -35,11 +36,10 @@ private:
   static size_t writeToStream(void *ptr, size_t size, size_t nmemb,
                               void *stream);
 
-  using filePath = std::filesystem::path;
-
 public:
   Downloader();
-  void DownloadImage(const std::string &URL, const filePath &Path);
-  void DeCompressArchive(const filePath &Path, const filePath &Dest);
+  void DownloadImage(const std::string &URL, const minidocker::FilePath &Path);
+  void DeCompressArchive(const minidocker::FilePath &Path,
+                         const minidocker::FilePath &Dest);
   void UnArchive();
 };

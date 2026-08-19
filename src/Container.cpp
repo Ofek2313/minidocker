@@ -1,27 +1,54 @@
 #include "Container.h"
-#include "CgroupManager.h"
+#include "Config.h"
+#include "FileDescriptor.h"
 #include "NamespaceConfig.h"
 #include "RootFileSystem.h"
-#include <algorithm>
 #include <cstddef>
+#include <cstdlib>
 #include <cstring>
 #include <exception>
 #include <iostream>
 #include <memory>
+#include <optional>
 #include <sched.h>
+#include <string>
 #include <sys/syscall.h>
 #include <sys/wait.h>
 #include <unistd.h>
 #include <vector>
 
-struct FileDescriptorArgs {
-  int readFd;
-  int writeFd;
-};
+Container::Container() {}
+
+size_t Container::GenerateHash() {
+  std::string randomString = "";
+  constexpr char letters[]{"ABCDEFGHIJKLMNOPQRSTUVWXYZ"};
+  std::srand(std::time(nullptr));
+  for (int i{0}; i < 8; i++) {
+    int random_num = std::rand() % sizeof(letters) + 1;
+    randomString.push_back(letters[random_num]);
+  }
+  std::hash<std::string> stringHasher;
+
+  size_t HashedString = stringHasher(randomString);
+  return HashedString;
+}
+
+void Container::HandleErrors() {
+
+  std::string errText = "";
+
+  while (pipeHandler_.Read() > 0) {
+    errText.append(pipeHandler_.ReadBuffer());
+  }
+  std::cerr << errText << std::endl;
+  pipeHandler_.CloseRead();
+}
 
 int Container::child_function(void *args) {
-  FileDescriptorArgs *Fd = static_cast<FileDescriptorArgs *>(args);
-  close(Fd->readFd);
+  ChildArgs *childArgs = static_cast<ChildArgs *>(args);
+
+  childArgs->pipeHandler_.CloseRead();
+
   try {
     RootFileSystem rfs;
     if (!rfs.IsRootFsInitialized()) {
@@ -35,49 +62,44 @@ int Container::child_function(void *args) {
     // std::make_shared<std::vector<std::byte>>(1024 * 1024 * 1024);
 
     // std::fill_n(memoryBuffer->data(), 1024 * 1024 * 1024, std::byte{0xA});
-    char *arg[] = {(char *)"/bin/ps", (char *)"aux", nullptr};
-    execvp(arg[0], arg);
+    if (!childArgs->commands->empty()) {
+      std::vector<char *> temp;
+
+      for (auto &command : childArgs->commands.value()) {
+        temp.push_back(command.data());
+      }
+      temp.push_back(nullptr);
+      char **arg = temp.data();
+
+      execvp(arg[0], arg);
+    }
+
   } catch (const std::exception &ex) {
-    write(Fd->writeFd, ex.what(), std::strlen(ex.what()));
-    close(Fd->writeFd);
+    childArgs->pipeHandler_.Write(ex.what(), std::strlen(ex.what()));
+
     _exit(1);
   }
 
   return 0;
 }
 
-void Container::InitContainer() {
+void Container::Run(std::vector<std::string> &commands) {
 
   NamespaceConfig ns;
   ns.isolateMount().isolatePid();
-  int fd[2];
-  pipe(fd);
-  FileDescriptorArgs Fd;
-  Fd.readFd = fd[0];
-  Fd.writeFd = fd[1];
+
+  pipeHandler_.OpenPipe();
+  minidocker::CgroupConfig config{100000, 1, "512M"};
+  containerId_ = GenerateHash();
+  cgroupManager_ = std::make_unique<CgroupManager>(containerId_, config);
   constexpr std::size_t stackSize = 1024 * 1024;
   auto stack = std::make_unique<std::byte[]>(stackSize);
-
-  CgroupManager CgroupManager("minidocker");
-  CgroupManager.CreateCgroup();
-  CgroupManager.LimitMemoryUsage("512M");
-  CgroupManager.LimitCpuBanwidth(0.5, 100000);
-  CgroupManager.AddProc(getpid());
+  ChildArgs childArgs = {pipeHandler_, commands};
   pid_t pid =
-      clone(child_function, stack.get() + stackSize, ns.getFlags(), &Fd);
-  close(fd[1]);
-  processId = pid;
-  char errBuffer[8192];
-  std::string errText = "";
-  int bytes = read(fd[0], errBuffer, sizeof(errBuffer));
-  if (bytes > 0) {
-    errText.append(errBuffer);
-    while ((bytes = read(fd[0], errBuffer, sizeof(errBuffer)) > 0)) {
-      errText.append((errBuffer));
-    }
-    std::cerr << errText << std::endl;
-  }
-  close(fd[0]);
+      clone(child_function, stack.get() + stackSize, ns.getFlags(), &childArgs);
+  cgroupManager_->AddProc(pid);
+  pipeHandler_.CloseWrite();
+  HandleErrors();
   std::cout << "Container Setup!" << std::endl;
   wait(NULL);
 }

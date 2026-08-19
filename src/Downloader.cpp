@@ -12,6 +12,7 @@
 #include <stdexcept>
 #include <string>
 #include <system_error>
+#include <zconf.h>
 
 Downloader::Downloader() : handle(curl_easy_init()) {
   if (!handle) {
@@ -25,10 +26,10 @@ size_t Downloader::writeToStream(void *ptr, size_t size, size_t nmemb,
   return nmemb * size;
 }
 
-void Downloader::DownloadImage(const std::string &URL, const filePath &Path) {
+void Downloader::DownloadImage(const std::string &URL,
+                               const minidocker::FilePath &Path) {
 
-  filePath des(Path);
-  std::ofstream file(des, std::ios::binary);
+  std::ofstream file(Path, std::ios::binary);
   if (!file.is_open()) {
     throw std::system_error(errno, std::generic_category(),
                             "Destination File Failed To Open: " +
@@ -40,14 +41,12 @@ void Downloader::DownloadImage(const std::string &URL, const filePath &Path) {
   curl_easy_setopt(handle.get(), CURLOPT_FOLLOWLOCATION, 1);
   CURLcode result = curl_easy_perform(handle.get());
   if (result != CURLE_OK) {
-    std::cerr << "download failed" << "\n";
-    std::cerr << "Download error code [" << result
-              << "]: " << curl_easy_strerror(result) << "\n";
     throw std::runtime_error(std::string("Download Failed: ") +
                              curl_easy_strerror(result));
   }
 }
-void Downloader::DeCompressArchive(const filePath &Path, const filePath &Dest) {
+void Downloader::DeCompressArchive(const minidocker::FilePath &Path,
+                                   const minidocker::FilePath &Dest) {
 
   if (!std::filesystem::exists(Path) || !std::filesystem::exists(Dest)) {
     throw std::runtime_error("File Do Not Exist");
@@ -76,8 +75,8 @@ void Downloader::DeCompressArchive(const filePath &Path, const filePath &Dest) {
   }
   while (archive_read_next_header(a.get(), &entry) == ARCHIVE_OK) {
 
-    filePath currentPath = archive_entry_pathname(entry);
-    filePath systemPath = (Dest / currentPath).lexically_normal();
+    minidocker::FilePath currentPath = archive_entry_pathname(entry);
+    minidocker::FilePath systemPath = (Dest / currentPath).lexically_normal();
     archive_entry_set_pathname(entry, systemPath.c_str());
 
     archive_write_header(write.get(), entry);

@@ -1,4 +1,5 @@
 #include "CgroupManager.h"
+#include "Config.h"
 #include <cerrno>
 #include <cmath>
 #include <cstdint>
@@ -11,9 +12,14 @@
 #include <string>
 #include <system_error>
 
-CgroupManager::CgroupManager(const std::string &groupName) {
+CgroupManager::CgroupManager(const std::string &containerId,
+                             minidocker::CgroupConfig &config) {
 
-  CgroupPath = "/sys/fs/cgroup/" + groupName;
+  CgroupPath = "/sys/fs/cgroup/minidocker-" + containerId;
+  CreateCgroup();
+  LimitMemoryUsage(config.memoryLimit);
+  LimitCpuBanwidth(config.cores, config.period);
+  LimitMemorySwap("0");
 }
 
 void CgroupManager::CreateCgroup() {
@@ -27,7 +33,7 @@ void CgroupManager::CreateCgroup() {
 }
 
 void CgroupManager::LimitMemoryUsage(std::string_view memory) {
-  filePath memoryPath = CgroupPath / ("memory.max");
+  minidocker::FilePath memoryPath = CgroupPath / ("memory.max");
   std::ofstream outFile(memoryPath, std::ios::binary);
   if (!outFile.is_open()) {
     throw std::runtime_error("Unable to open memory file");
@@ -35,30 +41,55 @@ void CgroupManager::LimitMemoryUsage(std::string_view memory) {
   outFile << memory << '\n';
 
   if (!outFile) {
+    throw std::runtime_error("File Writting Failed");
   }
   // filePath memorySwap = CgroupPath / ("memory.swap.max");
   // std::ofstream outFile2(memorySwap, std::ios::binary);
   // outFile2 << 0 << '\n';
 }
+void CgroupManager::LimitMemorySwap(minidocker::Memory swapLimit) {
+  minidocker::FilePath memorySwapPath = CgroupPath / ("memory.swap.max");
+  std::ofstream outFile(memorySwapPath, std::ios::binary);
+
+  if (!outFile.is_open())
+    throw std::runtime_error("Unable to open memory swap file");
+
+  outFile << swapLimit << '\n';
+  if (!outFile)
+    throw std::runtime_error("File Writting Failed");
+}
+
 void CgroupManager::AddProc(pid_t processId) {
-  filePath procPath = CgroupPath / ("cgroup.procs");
+  minidocker::FilePath procPath = CgroupPath / ("cgroup.procs");
   std::ofstream outFile(procPath, std::ios::binary);
 
   outFile << processId << '\n';
 }
-void CgroupManager::LimitCpuBanwidth(double cores, int period = 100000) {
-  filePath cpuPath = CgroupPath / ("cpu.max");
-  int quota = cores * period;
+void CgroupManager::LimitCpuBanwidth(minidocker::CpuCores cores,
+                                     minidocker::CpuQuota period = 100000) {
+
+  minidocker::FilePath cpuPath = CgroupPath / ("cpu.max");
+  minidocker::CpuQuota quota = cores * period;
 
   std::string cpuwidth = std::to_string(quota) + " " + std::to_string(period);
-  std::cout << cpuwidth << std::endl;
+
   std::ofstream outFile(cpuPath, std::ios::trunc);
-
+  if (!outFile.is_open()) {
+    throw std::runtime_error("Unable to open cpu bandwith file");
+  }
   outFile << cpuwidth << '\n';
+
+  if (!outFile) {
+    throw std::runtime_error("File writting Failed");
+  }
+}
+void CgroupManager::SetupCgroup(minidocker::CgroupConfig &config,
+                                pid_t procsId) {
+
+  CreateCgroup();
+  LimitMemoryUsage(config.memoryLimit);
+  LimitCpuBanwidth(config.cores, config.period);
+  AddProc(procsId);
 }
 
-CgroupManager::~CgroupManager() {
-
-  filePath procPath = CgroupPath / ("cgroup.procs");
-  std::ofstream outFile(procPath, std::ios::trunc);
-}
+CgroupManager::~CgroupManager() { std::filesystem::remove(CgroupPath); }
