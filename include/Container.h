@@ -29,9 +29,14 @@ private:
 private:
   void InitCgroup(minidocker::CgroupConfig &config);
   void HandleErrors();
+
   size_t GenerateHash();
+  void PrepareEnvironment();
+  void CreateChildProcess(std::vector<std::string> &commands);
 
 public:
   void Run(std::vector<std::string> &commands);
+  void RunDetached(std::vector<std::string> &commands);
+  void ConfigContainer();
   Container();
 };

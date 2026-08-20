@@ -3,15 +3,18 @@
 #include "FileDescriptor.h"
 #include "NamespaceConfig.h"
 #include "RootFileSystem.h"
+#include <algorithm>
 #include <cstddef>
 #include <cstdlib>
 #include <cstring>
 #include <exception>
+#include <fcntl.h>
 #include <iostream>
 #include <memory>
 #include <optional>
 #include <sched.h>
 #include <string>
+#include <sys/mount.h>
 #include <sys/syscall.h>
 #include <sys/wait.h>
 #include <unistd.h>
@@ -24,7 +27,7 @@ size_t Container::GenerateHash() {
   constexpr char letters[]{"ABCDEFGHIJKLMNOPQRSTUVWXYZ"};
   std::srand(std::time(nullptr));
   for (int i{0}; i < 8; i++) {
-    int random_num = std::rand() % sizeof(letters) + 1;
+    int random_num = std::rand() % sizeof(letters);
     randomString.push_back(letters[random_num]);
   }
   std::hash<std::string> stringHasher;
@@ -36,28 +39,37 @@ size_t Container::GenerateHash() {
 void Container::HandleErrors() {
 
   std::string errText = "";
-
-  while (pipeHandler_.Read() > 0) {
-    errText.append(pipeHandler_.ReadBuffer());
+  size_t bytes = 0;
+  while ((bytes = pipeHandler_.Read()) > 0) {
+    errText.append(pipeHandler_.ReadBuffer(), bytes);
   }
   std::cerr << errText << std::endl;
   pipeHandler_.CloseRead();
 }
 
 int Container::child_function(void *args) {
+
   ChildArgs *childArgs = static_cast<ChildArgs *>(args);
 
-  childArgs->pipeHandler_.CloseRead();
+  if (minidocker::containerConfig.attachFlag) {
 
+    FileDescriptor logFileDescriptor(
+        open("/var/log/minidocker.log", O_WRONLY | O_APPEND));
+    setsid();
+    dup2(logFileDescriptor.get(), STDOUT_FILENO);
+    dup2(logFileDescriptor.get(), STDIN_FILENO);
+    dup2(logFileDescriptor.get(), STDERR_FILENO);
+  }
+  std::cout << "Error" << '\n';
+
+  // std::this_thread::sleep_for(std::chrono::seconds(10));
   try {
-    RootFileSystem rfs;
-    if (!rfs.IsRootFsInitialized()) {
-      rfs.CreateRootDirectory();
-      rfs.DownloadAlpineEnvironment();
-    } // If Root FileSystem Not Initialized download and setup environment;
 
-    rfs.setRoot(getpid());
-    rfs.MountProcFolder();
+    childArgs->pipeHandler_.CloseRead();
+    mount(nullptr, "/", nullptr, MS_REC | MS_PRIVATE, nullptr);
+
+    RootFileSystem rfs;
+    rfs.SetUpRootFileSystem();
     // auto memoryBuffer =
     // std::make_shared<std::vector<std::byte>>(1024 * 1024 * 1024);
 
@@ -83,15 +95,20 @@ int Container::child_function(void *args) {
   return 0;
 }
 
-void Container::Run(std::vector<std::string> &commands) {
+void Container::PrepareEnvironment() {
+
+  pipeHandler_.OpenPipe();
+
+  containerId_ = GenerateHash();
+  minidocker::CgroupConfig config{100000, 1, "512M"};
+  cgroupManager_ = std::make_unique<CgroupManager>(containerId_, config);
+}
+
+void Container::CreateChildProcess(std::vector<std::string> &commands) {
 
   NamespaceConfig ns;
   ns.isolateMount().isolatePid();
 
-  pipeHandler_.OpenPipe();
-  minidocker::CgroupConfig config{100000, 1, "512M"};
-  containerId_ = GenerateHash();
-  cgroupManager_ = std::make_unique<CgroupManager>(containerId_, config);
   constexpr std::size_t stackSize = 1024 * 1024;
   auto stack = std::make_unique<std::byte[]>(stackSize);
   ChildArgs childArgs = {pipeHandler_, commands};
@@ -99,7 +116,24 @@ void Container::Run(std::vector<std::string> &commands) {
       clone(child_function, stack.get() + stackSize, ns.getFlags(), &childArgs);
   cgroupManager_->AddProc(pid);
   pipeHandler_.CloseWrite();
+}
+
+void Container::Run(std::vector<std::string> &commands) {
+
+  minidocker::containerConfig.attachFlag = true;
+  PrepareEnvironment();
+
+  CreateChildProcess(commands);
+
+  if (minidocker::containerConfig.attachFlag)
+    return;
+
   HandleErrors();
-  std::cout << "Container Setup!" << std::endl;
+
   wait(NULL);
+}
+
+void Container::ConfigContainer() {
+  minidocker::containerConfig.attachFlag = false;
+  minidocker::containerConfig.containerName = "test";
 }

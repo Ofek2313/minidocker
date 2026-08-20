@@ -92,4 +92,6 @@ void CgroupManager::SetupCgroup(minidocker::CgroupConfig &config,
   AddProc(procsId);
 }
 
-CgroupManager::~CgroupManager() { std::filesystem::remove(CgroupPath); }
+CgroupManager::~CgroupManager() noexcept {
+  // std::filesystem::remove(CgroupPath);
+}

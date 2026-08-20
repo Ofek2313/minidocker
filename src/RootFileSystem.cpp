@@ -3,20 +3,44 @@
 #include <cerrno>
 #include <cstddef>
 #include <filesystem>
+#include <fstream>
+#include <iostream>
 #include <string_view>
 #include <sys/mount.h>
+#include <sys/syscall.h>
+#include <syscall.h>
 #include <system_error>
 #include <unistd.h>
 #include <zlib.h>
 
-bool RootFileSystem::setRoot(int pid) {
+void RootFileSystem::CreateLogFile() {
 
-  using filepath = std::filesystem::path;
-  filepath symPath = "/proc/" + std::to_string(getpid()) + "/exe";
-  filepath procPath = std::filesystem::read_symlink(symPath);
-  int status = chroot(ROOTPATH.data());
+  // std::ofstream logFile("/var/log/minidocker.log");
+  if (!std::filesystem::exists(logPath_)) {
+    std::ofstream logFile("/var/log/minidocker.log");
+    if (!logFile) {
+      throw std::system_error(errno, std::generic_category(),
+                              "Failed to create log file");
+    }
+    logFile.close();
+  } else {
+    std::cout << "Does Exsit" << std::endl;
+  }
+}
+
+bool RootFileSystem::SetRoot() {
+
+  mount(ROOTPATH.data(), ROOTPATH.data(), NULL, MS_BIND, NULL);
+  std::string oldRootPath = std::string(ROOTPATH) + "/oldroot";
+  std::filesystem::create_directory(oldRootPath);
+
+  syscall(SYS_pivot_root, ROOTPATH.data(), oldRootPath.c_str());
+
   chdir("/");
-  return (status == 0) ? true : false;
+
+  umount("/oldroot");
+  std::filesystem::remove("/oldroot");
+  return true;
 }
 
 void RootFileSystem::DownloadAlpineEnvironment() {
@@ -44,4 +68,13 @@ void RootFileSystem::MountProcFolder() {
     throw std::system_error(errno, std::generic_category(),
                             "Proc Folder Failed To Mount");
   }
+}
+void RootFileSystem::SetUpRootFileSystem() {
+  CreateLogFile();
+  if (!IsRootFsInitialized()) {
+    CreateRootDirectory();
+    DownloadAlpineEnvironment();
+  }
+  SetRoot();
+  MountProcFolder();
 }

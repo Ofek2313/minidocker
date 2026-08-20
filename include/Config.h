@@ -16,8 +16,13 @@ struct CgroupConfig {
 
 struct ContainerConfig {
 
-  CgroupConfig cgroupconfig;
+  CgroupConfig cgroupConfig;
   std::string containerName;
+  FilePath workingDirectory;
+  bool attachFlag;
 };
 
+inline ContainerConfig containerConfig;
+
 } // namespace minidocker
+  //
