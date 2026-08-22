@@ -14,16 +14,13 @@ private:
   std::unique_ptr<CgroupManager>
       cgroupManager_; // Constructor unknown at init so made it a ptr;
   PipeHandler pipeHandler_;
-  std::string containerId_;
+  size_t containerId_;
+
+  minidocker::ContainerConfig containerConfig_;
 
   struct FileDescriptorArgs {
     int readFd;
     int writeFd;
-  };
-
-  struct ChildArgs {
-    PipeHandler &pipeHandler_;
-    std::optional<std::vector<std::string>> commands;
   };
 
 private:

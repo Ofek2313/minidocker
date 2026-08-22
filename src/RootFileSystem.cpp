@@ -38,7 +38,7 @@ bool RootFileSystem::SetRoot() {
 
   chdir("/");
 
-  umount("/oldroot");
+  umount2("/oldroot", MNT_DETACH);
   std::filesystem::remove("/oldroot");
   return true;
 }
@@ -70,6 +70,8 @@ void RootFileSystem::MountProcFolder() {
   }
 }
 void RootFileSystem::SetUpRootFileSystem() {
+
+  mount(nullptr, "/", nullptr, MS_REC | MS_PRIVATE, nullptr);
   CreateLogFile();
   if (!IsRootFsInitialized()) {
     CreateRootDirectory();

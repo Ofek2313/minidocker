@@ -8,7 +8,7 @@
 class CgroupManager {
 
 private:
-  minidocker::FilePath CgroupPath;
+  minidocker::FilePath cgroupPath_;
 
   void CreateCgroup();
   void LimitMemoryUsage(std::string_view memory);
@@ -17,7 +17,7 @@ private:
   void LimitMemorySwap(minidocker::Memory swapLimit);
 
 public:
-  CgroupManager(const std::string &groupName, minidocker::CgroupConfig &config);
+  CgroupManager(size_t containerId, minidocker::CgroupConfig &config);
   void SetupCgroup(minidocker::CgroupConfig &config, pid_t procsId);
 
   void AddProc(pid_t processId);

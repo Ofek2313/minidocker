@@ -1,5 +1,10 @@
-#include <filesystem>
+
 #pragma once
+#include "PipeHandler.h"
+#include <filesystem>
+#include <string>
+#include <vector>
+
 namespace minidocker {
 
 using FilePath = std::filesystem::path;
@@ -22,7 +27,9 @@ struct ContainerConfig {
   bool attachFlag;
 };
 
-inline ContainerConfig containerConfig;
+struct ChildArgs {
+  PipeHandler &pipeHandler;
+  std::vector<std::string> commands;
+};
 
-} // namespace minidocker
-  //
+}; // namespace minidocker
