@@ -29,6 +29,7 @@ struct ContainerConfig {
 
 struct ChildArgs {
   PipeHandler &pipeHandler;
+  ContainerConfig &containerConfig;
   std::vector<std::string> commands;
 };
 

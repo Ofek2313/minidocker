@@ -51,8 +51,7 @@ void Container::HandleErrors() {
 int Container::child_function(void *args) {
 
   minidocker::ChildArgs *childArgs = static_cast<minidocker::ChildArgs *>(args);
-  std::cout << childArgs->commands.size() << std::endl;
-  ContainerProcess process(childArgs);
+  ContainerProcess process(childArgs, childArgs->containerConfig);
   process.Run();
   return 0;
 }
@@ -63,6 +62,7 @@ void Container::PrepareEnvironment() {
 
   containerId_ = GenerateHash();
   minidocker::CgroupConfig config{100000, 1, "512M"};
+  containerConfig_ = minidocker::ContainerConfig{config, "Test", "/", false};
   cgroupManager_ = std::make_unique<CgroupManager>(containerId_, config);
 }
 
@@ -73,19 +73,19 @@ void Container::CreateChildProcess(std::vector<std::string> &commands) {
 
   constexpr std::size_t stackSize = 1024 * 1024;
   auto stack = std::make_unique<std::byte[]>(stackSize);
-  minidocker::ChildArgs childArgs = {pipeHandler_, commands};
+  minidocker::ChildArgs childArgs = {pipeHandler_, containerConfig_, commands};
   pid_t pid =
       clone(child_function, stack.get() + stackSize, ns.getFlags(), &childArgs);
+  std::cout << pid << std::endl;
   cgroupManager_->AddProc(pid);
   pipeHandler_.CloseWrite();
 }
 
 void Container::Run(std::vector<std::string> &commands) {
 
-  containerConfig_.attachFlag = false;
+  containerConfig_.attachFlag = true;
   PrepareEnvironment();
 
-  std::cout << commands.data() << std::endl;
   CreateChildProcess(commands);
 
   if (containerConfig_.attachFlag)

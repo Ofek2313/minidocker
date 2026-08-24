@@ -1,16 +1,19 @@
 #include "ContainerProcess.h"
 #include "RootFileSystem.h"
 #include <cerrno>
+#include <chrono>
 #include <cstdlib>
 #include <cstring>
 #include <exception>
 #include <fcntl.h>
 #include <iostream>
 #include <system_error>
+#include <thread>
 #include <unistd.h>
 #include <vector>
 
-ContainerProcess::ContainerProcess(minidocker::ChildArgs *childArgs)
+ContainerProcess::ContainerProcess(minidocker::ChildArgs *childArgs,
+                                   minidocker::ContainerConfig containerConfig)
     : childArgs_{childArgs} {};
 
 void ContainerProcess::ReDirectFileDescriptors() {
@@ -56,12 +59,14 @@ void ContainerProcess::Detach() {
 void ContainerProcess::Run() {
 
   childArgs_->pipeHandler.CloseRead();
-  // Detach();
+  Detach();
 
   RootFileSystem rootFileSystem;
   rootFileSystem.SetUpRootFileSystem();
   std::cout << childArgs_->commands.data() << std::endl;
+  std::this_thread::sleep_for(std::chrono::seconds(5));
   ExecuteCommands();
+  std::this_thread::sleep_for(std::chrono::seconds(20));
 
   // } catch (const std::exception exception) {
 

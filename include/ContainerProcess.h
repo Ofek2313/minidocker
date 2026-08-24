@@ -15,6 +15,7 @@ private:
   void Detach();
 
 public:
-  ContainerProcess(minidocker::ChildArgs *childArgs);
+  ContainerProcess(minidocker::ChildArgs *childArgs,
+                   minidocker::ContainerConfig containerConfig);
   void Run();
 };
