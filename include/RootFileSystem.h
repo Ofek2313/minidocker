@@ -3,11 +3,13 @@
 
 class RootFileSystem {
 private:
-  static constexpr std::string_view ROOTPATH = "/var/lib/minidocker";
+  const minidocker::FilePath rootPath_;
   minidocker::FilePath logPath_ = "/var/log/minidocker.log";
   void CreateLogFile();
 
 public:
+  RootFileSystem(minidocker::FilePath rootPath);
+
   void DownloadAlpineEnvironment();
   bool SetRoot();
   bool IsRootFsInitialized();

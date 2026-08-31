@@ -4,6 +4,7 @@
 #include <memory>
 #include <optional>
 #include <sched.h>
+#include <semaphore>
 #include <string>
 #include <vector>
 
@@ -14,6 +15,7 @@ private:
   std::unique_ptr<CgroupManager>
       cgroupManager_; // Constructor unknown at init so made it a ptr;
   PipeHandler pipeHandler_;
+  PipeHandler syncPipe_;
   size_t containerId_;
 
   minidocker::ContainerConfig containerConfig_;
@@ -22,6 +24,8 @@ private:
     int readFd;
     int writeFd;
   };
+
+  const minidocker::FilePath basePath_ = "/var/lib/minidocker";
 
 private:
   void InitCgroup(minidocker::CgroupConfig &config);
@@ -33,7 +37,7 @@ private:
 
 public:
   void Run(std::vector<std::string> &commands);
-  void RunDetached(std::vector<std::string> &commands);
+  void Init();
   void ConfigContainer();
   Container();
 };

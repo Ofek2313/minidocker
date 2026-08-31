@@ -44,6 +44,7 @@ void Downloader::DownloadImage(const std::string &URL,
     throw std::runtime_error(std::string("Download Failed: ") +
                              curl_easy_strerror(result));
   }
+  std::cout << "Downloaded" << std::endl;
 }
 void Downloader::DeCompressArchive(const minidocker::FilePath &Path,
                                    const minidocker::FilePath &Dest) {
@@ -93,4 +94,5 @@ void Downloader::DeCompressArchive(const minidocker::FilePath &Path,
     archive_write_finish_entry(write.get());
     // go over to next header
   }
+  std::cout << "Flag2" << std::endl;
 }

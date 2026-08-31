@@ -5,15 +5,18 @@
 #include "FileDescriptor.h"
 #include "NamespaceConfig.h"
 #include "RootFileSystem.h"
+#include <algorithm>
 #include <cstddef>
 #include <cstdlib>
 #include <cstring>
 #include <exception>
 #include <fcntl.h>
+#include <filesystem>
 #include <iostream>
 #include <memory>
 #include <optional>
 #include <sched.h>
+#include <semaphore>
 #include <string>
 #include <sys/mount.h>
 #include <sys/syscall.h>
@@ -61,8 +64,14 @@ void Container::PrepareEnvironment() {
   pipeHandler_.OpenPipe();
 
   containerId_ = GenerateHash();
+
+  minidocker::FilePath rootPath =
+      basePath_ / "containers" / std::to_string(containerId_);
+  std::filesystem::create_directories(rootPath);
   minidocker::CgroupConfig config{100000, 1, "512M"};
-  containerConfig_ = minidocker::ContainerConfig{config, "Test", "/", false};
+
+  containerConfig_ =
+      minidocker::ContainerConfig{config, "Test", rootPath, "/", false, true};
   cgroupManager_ = std::make_unique<CgroupManager>(containerId_, config);
 }
 
@@ -73,7 +82,8 @@ void Container::CreateChildProcess(std::vector<std::string> &commands) {
 
   constexpr std::size_t stackSize = 1024 * 1024;
   auto stack = std::make_unique<std::byte[]>(stackSize);
-  minidocker::ChildArgs childArgs = {pipeHandler_, containerConfig_, commands};
+  minidocker::ChildArgs childArgs = {pipeHandler_, syncPipe_, containerConfig_,
+                                     commands};
   pid_t pid =
       clone(child_function, stack.get() + stackSize, ns.getFlags(), &childArgs);
   std::cout << pid << std::endl;
@@ -88,14 +98,21 @@ void Container::Run(std::vector<std::string> &commands) {
 
   CreateChildProcess(commands);
 
-  if (containerConfig_.attachFlag)
+  if (containerConfig_.attachFlag) {
+
+    syncPipe_.Write("W", 1);
     return;
+  }
 
   HandleErrors();
 
   wait(NULL);
 }
+void Container::Init() {
 
+  std::filesystem::create_directories(basePath_ / "containers");
+  std::filesystem::create_directories(basePath_ / "bases");
+}
 void Container::ConfigContainer() {
   containerConfig_.attachFlag = false;
   containerConfig_.containerName = "test";

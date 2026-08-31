@@ -1,4 +1,5 @@
 #include "ContainerProcess.h"
+#include "Config.h"
 #include "RootFileSystem.h"
 #include <cerrno>
 #include <chrono>
@@ -6,7 +7,10 @@
 #include <cstring>
 #include <exception>
 #include <fcntl.h>
+#include <filesystem>
 #include <iostream>
+#include <ranges>
+#include <stdexcept>
 #include <system_error>
 #include <thread>
 #include <unistd.h>
@@ -14,14 +18,14 @@
 
 ContainerProcess::ContainerProcess(minidocker::ChildArgs *childArgs,
                                    minidocker::ContainerConfig containerConfig)
-    : childArgs_{childArgs} {};
+    : childArgs_{childArgs}, containerConfig_{containerConfig} {};
 
 void ContainerProcess::ReDirectFileDescriptors() {
 
   FileDescriptor logFileDescriptor(
-      open(logFilePath_.c_str(), O_WRONLY | O_APPEND));
+      open(logFilePath_.c_str(), O_WRONLY | O_APPEND | O_CREAT));
 
-  for (int i{}; i < 3; ++i) {
+  for (int i{0}; i < 3; ++i) {
     if (dup2(logFileDescriptor.get(), i) == -1) {
       throw std::system_error(errno, std::generic_category(),
                               "Unable to allocate new file descriptor");
@@ -44,6 +48,7 @@ std::vector<char *> ContainerProcess::ParseCommands() {
 void ContainerProcess::ExecuteCommands() {
   if (!childArgs_->commands.empty()) {
     std::vector<char *> commands = ParseCommands();
+
     if (execvp(commands[0], commands.data()) == -1) {
       throw std::system_error(errno, std::generic_category(),
                               "Command Execution Failed");
@@ -56,17 +61,40 @@ void ContainerProcess::Detach() {
   ReDirectFileDescriptors();
 }
 
+void ContainerProcess::ChangeWd(minidocker::FilePath workingDir) {
+  if (!std::filesystem::is_directory(workingDir)) {
+    std::cerr << "Unable to change working is_directory" << std::endl;
+  }
+  std::filesystem::current_path(workingDir);
+}
+void ContainerProcess::CopyBinary(minidocker::FilePath binaryPath) {
+  if (!std::filesystem::is_directory(userBinaryPath_))
+    std::filesystem::create_directory(userBinaryPath_);
+
+  std::filesystem::copy(binaryPath, userBinaryPath_,
+                        std::filesystem::copy_options::overwrite_existing);
+}
 void ContainerProcess::Run() {
 
+  childArgs_->syncHandler.CloseWrite();
   childArgs_->pipeHandler.CloseRead();
-  Detach();
+  if (childArgs_->containerConfig.attachFlag)
+    Detach();
 
-  RootFileSystem rootFileSystem;
-  rootFileSystem.SetUpRootFileSystem();
+  RootFileSystem rfs(containerConfig_.workingDirectory);
+  rfs.SetUpRootFileSystem();
+
+  if (childArgs_->containerConfig.attachFlag) {
+
+    size_t bytes = childArgs_->syncHandler.Read();
+    if (bytes < 0) {
+      throw std::runtime_error("Error in reading pipe");
+    }
+  }
   std::cout << childArgs_->commands.data() << std::endl;
-  std::this_thread::sleep_for(std::chrono::seconds(5));
+  // ChangeWd("/var");
+
   ExecuteCommands();
-  std::this_thread::sleep_for(std::chrono::seconds(20));
 
   // } catch (const std::exception exception) {
 

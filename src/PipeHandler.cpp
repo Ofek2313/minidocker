@@ -1,5 +1,6 @@
 #include "PipeHandler.h"
 #include "FileDescriptor.h"
+#include <fcntl.h>
 #include <unistd.h>
 
 PipeHandler::PipeHandler() {}
@@ -7,7 +8,7 @@ PipeHandler::PipeHandler() {}
 void PipeHandler::OpenPipe() {
 
   int pipeFd[2];
-  if (pipe(pipeFd) < 0) {
+  if (pipe2(pipeFd, O_CLOEXEC) < 0) {
     // error
   }
 
