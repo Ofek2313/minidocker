@@ -8,9 +8,12 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 find_package(CURL REQUIRED)
 find_package(LibArchive REQUIRED)
+find_package(PkgConfig REQUIRED)
+
+pkg_check_modules(UUID REQUIRED IMPORTED_TARGET uuid)
 
 file(GLOB_RECURSE SOURCES "src/*.cpp")
 add_executable(${PROJECT_NAME} ${SOURCES})
 target_include_directories(${PROJECT_NAME} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
-target_link_libraries(minidocker PRIVATE CURL::libcurl LibArchive::LibArchive)
+target_link_libraries(minidocker PRIVATE CURL::libcurl LibArchive::LibArchive PkgConfig::UUID)
 

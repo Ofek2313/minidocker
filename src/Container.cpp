@@ -112,6 +112,7 @@ void Container::Init() {
 
   std::filesystem::create_directories(basePath_ / "containers");
   std::filesystem::create_directories(basePath_ / "bases");
+  std::filesystem::create_directories(basePath_ / "images");
 }
 void Container::ConfigContainer() {
   containerConfig_.attachFlag = false;

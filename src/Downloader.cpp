@@ -68,7 +68,7 @@ void Downloader::DeCompressArchive(const minidocker::FilePath &Path,
 
   archive_read_support_filter_gzip(a.get());
   archive_read_support_format_tar(a.get());
-
+  std::cout << Path.c_str() << std::endl;
   if (archive_read_open_filename(a.get(), Path.c_str(), 10240) ==
       ARCHIVE_FATAL) {
     throw std::runtime_error(std::string("failed to open fail") +
