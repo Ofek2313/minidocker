@@ -18,6 +18,8 @@ private:
   void ChangeWd(minidocker::FilePath workingDir);
   void CopyBinary(minidocker::FilePath binaryPath);
 
+  void SetEnvVars();
+
 public:
   ContainerProcess(minidocker::ChildArgs *childArgs,
                    minidocker::ContainerConfig containerConfig);

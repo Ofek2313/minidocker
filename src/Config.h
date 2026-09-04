@@ -1,6 +1,6 @@
 
 #pragma once
-#include "PipeHandler.h"
+#include "tools/PipeHandler.h"
 #include <filesystem>
 #include <semaphore>
 #include <string>
@@ -39,25 +39,5 @@ struct ChildArgs {
   ContainerConfig &containerConfig;
   std::vector<std::string> commands;
 };
-
-struct ImageConfig {
-  BaseImage baseImage;
-};
-
-struct From {
-  BaseImage baseImage;
-};
-struct Copy {
-  FilePath source;
-  FilePath destination;
-};
-struct Add {
-  FilePath folderPath;
-};
-struct Cwd {
-  FilePath WorkingDirectory;
-};
-
-using Instruction = std::variant<Copy, Add, From, Cwd>;
 
 }; // namespace minidocker

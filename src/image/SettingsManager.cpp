@@ -1,5 +1,4 @@
-#include "SettingsManager.h"
-#include "Config.h"
+#include "image/SettingsManager.h"
 #include <fstream>
 #include <iostream>
 #include <ranges>
@@ -16,9 +15,9 @@ void SettingsManager::LoadSettings() {
   minidockerImageConfig_ = Json::parse(jsonFile);
 }
 
-std::vector<minidocker::Instruction> SettingsManager::GetInstructions() {
+std::vector<instructions::Instruction> SettingsManager::GetInstructions() {
 
-  std::vector<minidocker::Instruction> instructions;
+  std::vector<instructions::Instruction> instructions;
 
   for (auto &element : minidockerImageConfig_) {
 
@@ -32,16 +31,16 @@ std::vector<minidocker::Instruction> SettingsManager::GetInstructions() {
     }
 
     if (format.command == "COPY") {
-      minidocker::Copy copy{format.args[0], format.args[1]};
+      instructions::Copy copy{format.args[0], format.args[1]};
       instructions.push_back(copy);
     } else if (format.command == "ADD") {
-      minidocker::Add add{format.args[0]};
+      instructions::Add add{format.args[0]};
       instructions.push_back(add);
     } else if (format.command == "CWD") {
-      minidocker::Cwd cwd{format.args[0]};
+      instructions::Cwd cwd{format.args[0]};
       instructions.push_back(cwd);
     } else if (format.command == "FROM") {
-      minidocker::From from{baseMap_[format.args[0]]};
+      instructions::From from{baseMap_[format.args[0]]};
       instructions.push_back(from);
     }
   }

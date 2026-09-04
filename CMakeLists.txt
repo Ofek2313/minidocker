@@ -12,8 +12,8 @@ find_package(PkgConfig REQUIRED)
 
 pkg_check_modules(UUID REQUIRED IMPORTED_TARGET uuid)
 
-file(GLOB_RECURSE SOURCES "src/*.cpp")
+file(GLOB_RECURSE SOURCES CONFIGURE_DEPENDS "src/*.cpp")
 add_executable(${PROJECT_NAME} ${SOURCES})
-target_include_directories(${PROJECT_NAME} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
+target_include_directories(${PROJECT_NAME} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
 target_link_libraries(minidocker PRIVATE CURL::libcurl LibArchive::LibArchive PkgConfig::UUID)
 

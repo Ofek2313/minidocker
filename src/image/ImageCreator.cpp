@@ -1,9 +1,11 @@
-#include "ImageCreator.h"
+#include "image/ImageCreator.h"
 #include "Config.h"
+#include "image/Instructions.h"
 
 #include <algorithm>
 #include <cstddef>
 #include <filesystem>
+#include <fstream>
 #include <string>
 #include <string_view>
 #include <sys/mount.h>
@@ -13,7 +15,7 @@
 
 ImageCreator::ImageCreator() {}
 
-ImageCreator::ImageCreator(std::vector<minidocker::Instruction> instructions)
+ImageCreator::ImageCreator(std::vector<instructions::Instruction> instructions)
     : instructions_{instructions} {}
 
 void ImageCreator::CreateImageFolder() {
@@ -25,19 +27,34 @@ void ImageCreator::CreateImageFolder() {
   std::filesystem::create_directory(imageFolderPath_);
 }
 
+void ImageCreator::CreateEnvFile() {
+  if (!envVariables_.is_null()) {
+
+    std::ofstream file(imageFolderPath_ / "env.json");
+
+    if (file) {
+      file << envVariables_;
+      file.close();
+    }
+  }
+}
+
 void ImageCreator::CreateImage() {
   CreateImageFolder();
-  minidocker::From from{minidocker::BaseImage::Alpine};
+  instructions::From from{instructions::BaseImage::Alpine};
+  instructions::Env env{"var", "value"};
   ApplyInstruction(from);
+  ApplyInstruction(env);
   for (auto &instruction : instructions_) {
 
     std::visit(
         [this](const auto &instruction) { ApplyInstruction(instruction); },
         instruction);
   }
+  CreateEnvFile();
 }
 
-void ImageCreator::ApplyInstruction(minidocker::Copy instruction) {
+void ImageCreator::ApplyInstruction(instructions::Copy instruction) {
 
   if (!std::filesystem::is_directory(instruction.destination.parent_path())) {
     std::filesystem::create_directories(instruction.destination.parent_path());
@@ -50,14 +67,14 @@ void ImageCreator::ApplyInstruction(minidocker::Copy instruction) {
   std::filesystem::copy(instruction.source, instruction.destination,
                         std::filesystem::copy_options::overwrite_existing);
 }
-void ImageCreator::ApplyInstruction(minidocker::Add instruction) {
+void ImageCreator::ApplyInstruction(instructions::Add instruction) {
 
   if (!std::filesystem::create_directories(instruction.folderPath)) {
     return;
   }
 }
 
-void ImageCreator::ApplyInstruction(minidocker::Cwd instruction) {
+void ImageCreator::ApplyInstruction(instructions::Cwd instruction) {
 
   if (!std::filesystem::is_directory(instruction.WorkingDirectory)) {
     return;
@@ -65,7 +82,12 @@ void ImageCreator::ApplyInstruction(minidocker::Cwd instruction) {
   std::filesystem::current_path(instruction.WorkingDirectory);
 }
 
-void ImageCreator::ApplyInstruction(minidocker::From instruction) {
+void ImageCreator::ApplyInstruction(instructions::Env instruction) {
+  // Create a json file to save env variables env.json
+  envVariables_[instruction.name] = instruction.value;
+}
+
+void ImageCreator::ApplyInstruction(instructions::From instruction) {
 
   std::string baseLink = baseLinkMap_[instruction.baseImage];
   minidocker::FilePath basePath = "/var/lib/minidocker/bases/alpine";

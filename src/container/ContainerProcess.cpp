@@ -1,6 +1,6 @@
-#include "ContainerProcess.h"
+#include "container/ContainerProcess.h"
 #include "Config.h"
-#include "RootFileSystem.h"
+#include "container/RootFileSystem.h"
 #include <cerrno>
 #include <chrono>
 #include <cstdlib>
@@ -8,7 +8,10 @@
 #include <exception>
 #include <fcntl.h>
 #include <filesystem>
+#include <fstream>
 #include <iostream>
+#include <nlohmann/json.hpp>
+#include <nlohmann/json_fwd.hpp>
 #include <ranges>
 #include <stdexcept>
 #include <system_error>
@@ -102,4 +105,22 @@ void ContainerProcess::Run() {
   //                               std::strlen(exception.what()));
   // exit(1);
   // }
+}
+
+void ContainerProcess::SetEnvVars() {
+
+  if (!std::filesystem::exists("env.json")) {
+    return;
+  }
+
+  std::ifstream f("env.json");
+  nlohmann::json envData = nlohmann::json::parse(f);
+
+  for (auto &var : envData.items()) {
+    std::string value = var.value().is_string() ? var.value().get<std::string>()
+                                                : var.value().dump();
+    if (setenv(var.key().c_str(), value.c_str(), 0) == -1)
+      throw std::system_error(errno, std::generic_category(),
+                              "Failed to create env variable");
+  }
 }

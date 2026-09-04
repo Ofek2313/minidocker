@@ -1,4 +1,4 @@
-#include "NamespaceConfig.h"
+#include "container/NamespaceConfig.h"
 #include <sched.h>
 
 NamespaceConfig &NamespaceConfig::isolatePid() {
