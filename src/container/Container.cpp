@@ -69,8 +69,14 @@ void Container::PrepareEnvironment() {
   std::filesystem::create_directories(rootPath);
   minidocker::CgroupConfig config{100000, 1, "512M"};
 
-  containerConfig_ =
-      minidocker::ContainerConfig{config, "Test", rootPath, "/", false, true};
+  containerConfig_ = minidocker::ContainerConfig{
+      config,
+      "Test",
+      rootPath,
+      "/",
+      "/var/lib/minidocker/images/8998c158-0313-4fec-8e19-39c60c16add7",
+      false,
+      true};
   cgroupManager_ = std::make_unique<CgroupManager>(containerId_, config);
 }
 

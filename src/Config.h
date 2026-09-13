@@ -29,6 +29,7 @@ struct ContainerConfig {
   std::string containerName;
   FilePath workingDirectory;
   FilePath containerHostDirectory;
+  FilePath imagePath;
   bool attachFlag;
   bool copyBinary;
 };

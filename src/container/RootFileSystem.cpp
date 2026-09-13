@@ -31,7 +31,7 @@ void RootFileSystem::CreateLogFile() {
 
 bool RootFileSystem::SetRoot() {
 
-  mount("var/lib/minidocker/bases", rootPath_.c_str(), NULL, MS_BIND, NULL);
+  mount(imagePath_.c_str(), rootPath_.c_str(), NULL, MS_BIND, NULL);
   // mount(rootPath_.c_str(), rootPath_.c_str(), NULL, MS_BIND, NULL);
   std::string oldRootPath = std::string(rootPath_) + "/oldroot";
   std::filesystem::create_directory(oldRootPath);
@@ -84,5 +84,6 @@ void RootFileSystem::SetUpRootFileSystem() {
   SetRoot();
   MountProcFolder();
 }
-RootFileSystem::RootFileSystem(minidocker::FilePath rootPath)
-    : rootPath_{rootPath} {}
+RootFileSystem::RootFileSystem(minidocker::FilePath rootPath,
+                               minidocker::FilePath imagePath)
+    : rootPath_{rootPath}, imagePath_{imagePath} {}

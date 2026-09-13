@@ -42,7 +42,7 @@ void ImageCreator::CreateEnvFile() {
 void ImageCreator::CreateImage() {
   CreateImageFolder();
   instructions::From from{instructions::BaseImage::Alpine};
-  instructions::Env env{"var", "value"};
+  instructions::Env env{"VAR", "5"};
   ApplyInstruction(from);
   ApplyInstruction(env);
   for (auto &instruction : instructions_) {

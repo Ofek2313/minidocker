@@ -26,6 +26,6 @@ void App::Run() {
 
   Container container;
   container.Init();
-  std::vector<std::string> a = {"ps", "aux"};
+  std::vector<std::string> a = {"/bin/printenv", "VAR"};
   container.Run(a);
 }

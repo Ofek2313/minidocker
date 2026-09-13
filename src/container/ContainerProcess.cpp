@@ -15,7 +15,6 @@
 #include <ranges>
 #include <stdexcept>
 #include <system_error>
-#include <thread>
 #include <unistd.h>
 #include <vector>
 
@@ -79,46 +78,50 @@ void ContainerProcess::CopyBinary(minidocker::FilePath binaryPath) {
 }
 void ContainerProcess::Run() {
 
-  childArgs_->syncHandler.CloseWrite();
-  childArgs_->pipeHandler.CloseRead();
-  if (childArgs_->containerConfig.attachFlag)
-    Detach();
+  try {
+    childArgs_->syncHandler.CloseWrite();
+    childArgs_->pipeHandler.CloseRead();
+    if (childArgs_->containerConfig.attachFlag)
+      Detach();
 
-  RootFileSystem rfs(containerConfig_.workingDirectory);
-  rfs.SetUpRootFileSystem();
+    RootFileSystem rfs(containerConfig_.workingDirectory,
+                       containerConfig_.imagePath);
+    rfs.SetUpRootFileSystem();
+    if (childArgs_->containerConfig.attachFlag) {
 
-  if (childArgs_->containerConfig.attachFlag) {
-
-    size_t bytes = childArgs_->syncHandler.Read();
-    if (bytes < 0) {
-      throw std::runtime_error("Error in reading pipe");
+      size_t bytes = childArgs_->syncHandler.Read();
+      if (bytes < 0) {
+        throw std::runtime_error("Error in reading pipe");
+      }
     }
+    std::cout << childArgs_->commands.data() << std::endl;
+    // ChangeWd("/var");
+
+    SetEnvVars();
+    ExecuteCommands();
+  } catch (const std::exception exception) {
+
+    childArgs_->pipeHandler.Write(exception.what(),
+                                  std::strlen(exception.what()));
+    exit(1);
   }
-  std::cout << childArgs_->commands.data() << std::endl;
-  // ChangeWd("/var");
-
-  ExecuteCommands();
-
-  // } catch (const std::exception exception) {
-
-  //  childArgs_->pipeHandler.Write(exception.what(),
-  //                               std::strlen(exception.what()));
-  // exit(1);
-  // }
 }
 
 void ContainerProcess::SetEnvVars() {
 
-  if (!std::filesystem::exists("env.json")) {
+  if (!std::filesystem::exists("/env.json")) {
+    std::cout << "does not exists" << std::endl;
     return;
   }
 
   std::ifstream f("env.json");
-  nlohmann::json envData = nlohmann::json::parse(f);
-
+  nlohmann::json envData;
+  f >> envData;
+  // std::cout << envData << std::endl;
   for (auto &var : envData.items()) {
     std::string value = var.value().is_string() ? var.value().get<std::string>()
                                                 : var.value().dump();
+    // std::cout << var.value() << std::endl;
     if (setenv(var.key().c_str(), value.c_str(), 0) == -1)
       throw std::system_error(errno, std::generic_category(),
                               "Failed to create env variable");
