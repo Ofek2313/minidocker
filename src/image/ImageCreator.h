@@ -1,7 +1,9 @@
 #pragma once
+#include "Config.h"
 #include "Instructions.h"
 #include "tools/Downloader.h"
 #include "uuid/uuid.h"
+#include <algorithm>
 #include <nlohmann/json.hpp>
 #include <nlohmann/json_fwd.hpp>
 #include <string_view>
@@ -23,8 +25,8 @@ private:
 
   const minidocker::FilePath tempFile_ = "/tmp/base.tar.gz";
 
-  minidocker::FilePath imageFolderPath_ = "/var/lib/minidocker/images";
-  uuid_t imageId;
+  minidocker::FilePath baseFolderPath_ = "/var/lib/minidocker/images";
+  minidocker::FilePath imageFolderPath_;
 
   Json envVariables_;
 
@@ -35,7 +37,7 @@ private:
   void ApplyInstruction(instructions::Add instruction);
   void ApplyInstruction(instructions::Env instruction);
 
-  void CreateImageFolder();
+  void CreateImageFolder(std::string_view imageName);
   void CreateEnvFile();
 
 public:

@@ -3,13 +3,15 @@
 
 class RootFileSystem {
 private:
-  const minidocker::FilePath rootPath_;
-  const minidocker::FilePath imagePath_;
+  minidocker::FilePath rootPath_;
+  const std::string imageName_;
+  const size_t containerId_;
   minidocker::FilePath logPath_ = "/var/log/minidocker.log";
   void CreateLogFile();
+  void MountImage();
 
 public:
-  RootFileSystem(minidocker::FilePath rootPath, minidocker::FilePath imagePath);
+  RootFileSystem(size_t containerId, std::string imageName);
 
   void DownloadAlpineEnvironment();
   bool SetRoot();

@@ -1,13 +1,20 @@
 
 #pragma once
 #include "tools/PipeHandler.h"
+#include <cerrno>
 #include <filesystem>
 #include <semaphore>
 #include <string>
+#include <system_error>
 #include <variant>
 #include <vector>
 
 namespace minidocker {
+
+template <typename T> void checkErr(T ret, const std::string &msg) {
+  if (ret == -1)
+    throw std::system_error(errno, std::generic_category(), msg);
+}
 
 using FilePath = std::filesystem::path;
 using CpuDuration = int64_t;
@@ -26,19 +33,17 @@ struct CgroupConfig {
 struct ContainerConfig {
 
   CgroupConfig cgroupConfig;
-  std::string containerName;
-  FilePath workingDirectory;
-  FilePath containerHostDirectory;
-  FilePath imagePath;
+  std::string imageName;
   bool attachFlag;
-  bool copyBinary;
 };
 
 struct ChildArgs {
+
   PipeHandler &pipeHandler;
   PipeHandler &syncHandler;
   ContainerConfig &containerConfig;
   std::vector<std::string> commands;
+  size_t containerId;
 };
 
 }; // namespace minidocker

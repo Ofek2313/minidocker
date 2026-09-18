@@ -83,10 +83,11 @@ void ContainerProcess::Run() {
     childArgs_->pipeHandler.CloseRead();
     if (childArgs_->containerConfig.attachFlag)
       Detach();
-
-    RootFileSystem rfs(containerConfig_.workingDirectory,
-                       containerConfig_.imagePath);
+    std::cout << "CPRUN" << std::endl;
+    RootFileSystem rfs(childArgs_->containerId, containerConfig_.imageName);
     rfs.SetUpRootFileSystem();
+
+    std::cout << "Rfs Ok" << std::endl;
     if (childArgs_->containerConfig.attachFlag) {
 
       size_t bytes = childArgs_->syncHandler.Read();

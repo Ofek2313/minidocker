@@ -3,6 +3,7 @@
 #include "tools/Downloader.h"
 #include <cerrno>
 #include <cstddef>
+#include <exception>
 #include <filesystem>
 #include <fstream>
 #include <iostream>
@@ -29,18 +30,28 @@ void RootFileSystem::CreateLogFile() {
   }
 }
 
+void RootFileSystem::MountImage() {
+
+  minidocker::FilePath imagePath = "/var/lib/minidocker/images/" + imageName_;
+  minidocker::checkErr(
+      mount(imagePath.c_str(), rootPath_.c_str(), NULL, MS_BIND | MS_REC, NULL),
+      "Mounting Image Failed");
+}
+
 bool RootFileSystem::SetRoot() {
 
-  mount(imagePath_.c_str(), rootPath_.c_str(), NULL, MS_BIND, NULL);
   // mount(rootPath_.c_str(), rootPath_.c_str(), NULL, MS_BIND, NULL);
   std::string oldRootPath = std::string(rootPath_) + "/oldroot";
   std::filesystem::create_directory(oldRootPath);
 
-  syscall(SYS_pivot_root, rootPath_.c_str(), oldRootPath.c_str());
+  minidocker::checkErr(
+      syscall(SYS_pivot_root, rootPath_.c_str(), oldRootPath.c_str()),
+      "Failed To Pivot Root");
 
-  chdir("/");
+  minidocker::checkErr(chdir("/"), "Failed To Change Root Folder");
 
-  umount2("/oldroot", MNT_DETACH);
+  minidocker::checkErr(umount2("/oldroot", MNT_DETACH),
+                       "Failed To Unmount oldroot");
   std::filesystem::remove("/oldroot");
   mount(NULL, "/", NULL, MS_REMOUNT | MS_BIND | MS_RDONLY, NULL);
   return true;
@@ -67,23 +78,31 @@ bool RootFileSystem::CreateRootDirectory() {
   return std::filesystem::create_directory(rootPath_);
 }
 void RootFileSystem::MountProcFolder() {
-  if (mount("proc", "/proc", "proc", 0, NULL) == -1) {
-    throw std::system_error(errno, std::generic_category(),
-                            "Proc Folder Failed To Mount");
-  }
+
+  minidocker::checkErr(mount("proc", "/proc", "proc", 0, NULL),
+                       "Proc Failed To Mount");
 }
 void RootFileSystem::SetUpRootFileSystem() {
 
-  mount(nullptr, "/", nullptr, MS_REC | MS_PRIVATE, nullptr);
+  minidocker::checkErr(
+      mount(nullptr, "/", nullptr, MS_REC | MS_PRIVATE, nullptr),
+      "Failed To Privitaize Mounts");
   // CreateLogFile();
-  if (!IsRootFsInitialized()) {
-    CreateRootDirectory();
-  }
+  try {
 
-  DownloadAlpineEnvironment();
+    if (!IsRootFsInitialized()) {
+      CreateRootDirectory();
+    }
+  } catch (const std::exception &ex) {
+    std::cout << ex.what() << std::endl;
+  }
+  MountImage();
+  // DownloadAlpineEnvironment();
   SetRoot();
   MountProcFolder();
 }
-RootFileSystem::RootFileSystem(minidocker::FilePath rootPath,
-                               minidocker::FilePath imagePath)
-    : rootPath_{rootPath}, imagePath_{imagePath} {}
+RootFileSystem::RootFileSystem(size_t containerId, std::string imageName)
+    : containerId_{std::move(containerId)}, imageName_{std::move(imageName)} {
+
+  rootPath_ = "/var/lib/minidocker/containers/" + std::to_string(containerId_);
+}

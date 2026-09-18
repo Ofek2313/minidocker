@@ -17,8 +17,9 @@ private:
   PipeHandler pipeHandler_;
   PipeHandler syncPipe_;
   size_t containerId_;
+  std::string imageName_;
 
-  minidocker::ContainerConfig containerConfig_;
+  minidocker::ContainerConfig config_;
 
   struct FileDescriptorArgs {
     int readFd;
@@ -39,5 +40,5 @@ public:
   void Run(std::vector<std::string> &commands);
   void Init();
   void ConfigContainer();
-  Container();
+  Container(minidocker::ContainerConfig config);
 };

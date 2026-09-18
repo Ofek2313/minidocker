@@ -6,6 +6,7 @@
 #include <cstddef>
 #include <filesystem>
 #include <fstream>
+#include <iostream>
 #include <string>
 #include <string_view>
 #include <sys/mount.h>
@@ -16,15 +17,23 @@
 ImageCreator::ImageCreator() {}
 
 ImageCreator::ImageCreator(std::vector<instructions::Instruction> instructions)
-    : instructions_{instructions} {}
+    : instructions_{std::move(instructions)} {}
 
-void ImageCreator::CreateImageFolder() {
+void ImageCreator::CreateImageFolder(std::string_view imageName = {}) {
 
-  uuid_generate(imageId);
-  char uuidText[37];
-  uuid_unparse(imageId, uuidText);
-  imageFolderPath_ = imageFolderPath_ / uuidText;
-  std::filesystem::create_directory(imageFolderPath_);
+  if (imageName.empty()) {
+    uuid_t imageId;
+    uuid_generate(imageId);
+    char uuidText[37];
+    uuid_unparse(imageId, uuidText);
+    imageFolderPath_ = baseFolderPath_ / uuidText;
+    std::cout << "No Image Name, Image created as:  " << uuidText << '\n';
+  } else
+    imageFolderPath_ = baseFolderPath_ / imageName;
+
+  if (!std::filesystem::create_directory(imageFolderPath_)) {
+    std::cerr << "Image with that name already exists" << '\n';
+  } // create directory throws, so I let it bubble up and catch it.
 }
 
 void ImageCreator::CreateEnvFile() {
@@ -40,7 +49,7 @@ void ImageCreator::CreateEnvFile() {
 }
 
 void ImageCreator::CreateImage() {
-  CreateImageFolder();
+  CreateImageFolder("test");
   instructions::From from{instructions::BaseImage::Alpine};
   instructions::Env env{"VAR", "5"};
   ApplyInstruction(from);

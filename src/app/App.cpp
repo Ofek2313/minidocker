@@ -1,4 +1,5 @@
 #include "app/App.h"
+#include "Config.h"
 #include "container/Container.h"
 #include "image/ImageCreator.h"
 #include "image/SettingsManager.h"
@@ -22,9 +23,15 @@ void App::Run() {
   SettingsManager settingsManager;
 
   ImageCreator imageCreator(settingsManager.GetInstructions());
-  imageCreator.CreateImage();
+  // imageCreator.CreateImage();
 
-  Container container;
+  minidocker::CgroupConfig Cgroupconfig{100000, 1, "512M"};
+  minidocker::ContainerConfig config{
+      Cgroupconfig,
+      "test",
+      false,
+  };
+  Container container(config);
   container.Init();
   std::vector<std::string> a = {"/bin/printenv", "VAR"};
   container.Run(a);

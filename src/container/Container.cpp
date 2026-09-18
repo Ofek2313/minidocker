@@ -23,7 +23,8 @@
 #include <unistd.h>
 #include <vector>
 
-Container::Container() {}
+Container::Container(minidocker::ContainerConfig config)
+    : config_{std::move(config)} {}
 
 size_t Container::GenerateHash() {
   std::string randomString = "";
@@ -67,17 +68,9 @@ void Container::PrepareEnvironment() {
   minidocker::FilePath rootPath =
       basePath_ / "containers" / std::to_string(containerId_);
   std::filesystem::create_directories(rootPath);
-  minidocker::CgroupConfig config{100000, 1, "512M"};
 
-  containerConfig_ = minidocker::ContainerConfig{
-      config,
-      "Test",
-      rootPath,
-      "/",
-      "/var/lib/minidocker/images/8998c158-0313-4fec-8e19-39c60c16add7",
-      false,
-      true};
-  cgroupManager_ = std::make_unique<CgroupManager>(containerId_, config);
+  cgroupManager_ =
+      std::make_unique<CgroupManager>(containerId_, config_.cgroupConfig);
 }
 
 void Container::CreateChildProcess(std::vector<std::string> &commands) {
@@ -87,23 +80,22 @@ void Container::CreateChildProcess(std::vector<std::string> &commands) {
 
   constexpr std::size_t stackSize = 1024 * 1024;
   auto stack = std::make_unique<std::byte[]>(stackSize);
-  minidocker::ChildArgs childArgs = {pipeHandler_, syncPipe_, containerConfig_,
-                                     commands};
+  minidocker::ChildArgs childArgs = {pipeHandler_, syncPipe_, config_, commands,
+                                     containerId_};
   pid_t pid =
       clone(child_function, stack.get() + stackSize, ns.getFlags(), &childArgs);
-  std::cout << pid << std::endl;
+
   cgroupManager_->AddProc(pid);
   pipeHandler_.CloseWrite();
 }
 
 void Container::Run(std::vector<std::string> &commands) {
 
-  containerConfig_.attachFlag = true;
   PrepareEnvironment();
 
   CreateChildProcess(commands);
 
-  if (containerConfig_.attachFlag) {
+  if (config_.attachFlag) {
 
     syncPipe_.Write("W", 1);
     return;
@@ -113,13 +105,5 @@ void Container::Run(std::vector<std::string> &commands) {
 
   wait(NULL);
 }
-void Container::Init() {
-
-  std::filesystem::create_directories(basePath_ / "containers");
-  std::filesystem::create_directories(basePath_ / "bases");
-  std::filesystem::create_directories(basePath_ / "images");
-}
-void Container::ConfigContainer() {
-  containerConfig_.attachFlag = false;
-  containerConfig_.containerName = "test";
-}
+void Container::Init() {}
+void Container::ConfigContainer() {}
