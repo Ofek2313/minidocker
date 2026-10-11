@@ -1,5 +1,5 @@
 #include "Config.h"
-#include "container/CgroupManager.h"
+
 #include "tools/PipeHandler.h"
 #include <memory>
 #include <optional>
@@ -7,6 +7,8 @@
 #include <semaphore>
 #include <string>
 #include <vector>
+
+class CgroupManager;
 
 class Container {
 private:
@@ -41,4 +43,5 @@ public:
   void Init();
   void ConfigContainer();
   Container(minidocker::ContainerConfig config);
+  ~Container();
 };

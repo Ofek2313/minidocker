@@ -31,11 +31,11 @@ private:
   Json envVariables_;
 
 private:
-  void ApplyInstruction(instructions::From instruction);
-  void ApplyInstruction(instructions::Copy instruction);
-  void ApplyInstruction(instructions::Cwd instruction);
-  void ApplyInstruction(instructions::Add instruction);
-  void ApplyInstruction(instructions::Env instruction);
+  void ApplyInstruction(const instructions::From &instruction);
+  void ApplyInstruction(const instructions::Copy &instruction);
+  void ApplyInstruction(const instructions::Cwd &instruction);
+  void ApplyInstruction(const instructions::Add &instruction);
+  void ApplyInstruction(const instructions::Env &instruction);
 
   void CreateImageFolder(std::string_view imageName);
   void CreateEnvFile();

@@ -1,8 +1,6 @@
 #include "container/CgroupManager.h"
 #include "Config.h"
 #include <cerrno>
-#include <cmath>
-#include <cstdint>
 #include <filesystem>
 #include <fstream>
 #include <ios>

@@ -33,20 +33,39 @@ void RootFileSystem::CreateLogFile() {
 void RootFileSystem::MountImage() {
 
   minidocker::FilePath imagePath = "/var/lib/minidocker/images/" + imageName_;
-  minidocker::checkErr(
-      mount(imagePath.c_str(), rootPath_.c_str(), NULL, MS_BIND | MS_REC, NULL),
-      "Mounting Image Failed");
+
+  overlayFiles_ = {imagePath, rootPath_ / "upper", rootPath_ / "work",
+                   rootPath_ / "merged"};
+
+  for (const auto &dir :
+       {overlayFiles_.merged, overlayFiles_.upper, overlayFiles_.work}) {
+
+    std::filesystem::create_directories(dir);
+  }
+  // minidocker::checkErr(
+  //    mount(imagePath.c_str(), rootPath_.c_str(), NULL, MS_BIND | MS_REC,
+  //    NULL),
+  //   "Mounting Image Failed");
+  std::cout << "Before" << std::endl;
+  std::string options = "lowerdir=" + overlayFiles_.lower.string() +
+                        ",upperdir=" + overlayFiles_.upper.string() +
+                        ",workdir=" + overlayFiles_.work.string();
+
+  minidocker::checkErr(mount("overlay", overlayFiles_.merged.c_str(), "overlay",
+                             0, options.c_str()),
+                       "Overlay filesystem failed");
+  std::cout << "After" << std::endl;
 }
 
 bool RootFileSystem::SetRoot() {
 
   // mount(rootPath_.c_str(), rootPath_.c_str(), NULL, MS_BIND, NULL);
-  std::string oldRootPath = std::string(rootPath_) + "/oldroot";
+  std::string oldRootPath = std::string(overlayFiles_.merged) + "/oldroot";
   std::filesystem::create_directory(oldRootPath);
 
-  minidocker::checkErr(
-      syscall(SYS_pivot_root, rootPath_.c_str(), oldRootPath.c_str()),
-      "Failed To Pivot Root");
+  minidocker::checkErr(syscall(SYS_pivot_root, overlayFiles_.merged.c_str(),
+                               oldRootPath.c_str()),
+                       "Failed To Pivot Root");
 
   minidocker::checkErr(chdir("/"), "Failed To Change Root Folder");
 

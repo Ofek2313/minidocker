@@ -23,7 +23,7 @@ void App::Run() {
   SettingsManager settingsManager;
 
   ImageCreator imageCreator(settingsManager.GetInstructions());
-  // imageCreator.CreateImage();
+  imageCreator.CreateImage();
 
   minidocker::CgroupConfig Cgroupconfig{100000, 1, "512M"};
   minidocker::ContainerConfig config{

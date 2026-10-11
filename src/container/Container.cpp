@@ -1,27 +1,25 @@
 #include "container/Container.h"
 #include "Config.h"
+#include "container/CgroupManager.h"
 #include "container/ContainerProcess.h"
 #include "container/NamespaceConfig.h"
 #include "container/RootFileSystem.h"
-#include "tools/FileDescriptor.h"
-#include <algorithm>
 #include <cstddef>
 #include <cstdlib>
 #include <cstring>
-#include <exception>
 #include <fcntl.h>
 #include <filesystem>
 #include <iostream>
 #include <memory>
-#include <optional>
 #include <sched.h>
-#include <semaphore>
 #include <string>
 #include <sys/mount.h>
 #include <sys/syscall.h>
 #include <sys/wait.h>
 #include <unistd.h>
 #include <vector>
+
+Container::~Container() = default;
 
 Container::Container(minidocker::ContainerConfig config)
     : config_{std::move(config)} {}
@@ -67,6 +65,7 @@ void Container::PrepareEnvironment() {
 
   minidocker::FilePath rootPath =
       basePath_ / "containers" / std::to_string(containerId_);
+
   std::filesystem::create_directories(rootPath);
 
   cgroupManager_ =

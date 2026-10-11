@@ -2,7 +2,6 @@
 #include "Config.h"
 #include "container/RootFileSystem.h"
 #include <cerrno>
-#include <chrono>
 #include <cstdlib>
 #include <cstring>
 #include <exception>
@@ -12,8 +11,6 @@
 #include <iostream>
 #include <nlohmann/json.hpp>
 #include <nlohmann/json_fwd.hpp>
-#include <ranges>
-#include <stdexcept>
 #include <system_error>
 #include <unistd.h>
 #include <vector>
@@ -83,11 +80,9 @@ void ContainerProcess::Run() {
     childArgs_->pipeHandler.CloseRead();
     if (childArgs_->containerConfig.attachFlag)
       Detach();
-    std::cout << "CPRUN" << std::endl;
     RootFileSystem rfs(childArgs_->containerId, containerConfig_.imageName);
     rfs.SetUpRootFileSystem();
 
-    std::cout << "Rfs Ok" << std::endl;
     if (childArgs_->containerConfig.attachFlag) {
 
       size_t bytes = childArgs_->syncHandler.Read();
@@ -95,8 +90,6 @@ void ContainerProcess::Run() {
         throw std::runtime_error("Error in reading pipe");
       }
     }
-    std::cout << childArgs_->commands.data() << std::endl;
-    // ChangeWd("/var");
 
     SetEnvVars();
     ExecuteCommands();
