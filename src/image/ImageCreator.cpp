@@ -12,6 +12,10 @@
 #include <uuid/uuid.h>
 #include <variant>
 
+namespace {
+const minidocker::FilePath tempFile_ = "/tmp/base.tar.gz";
+const minidocker::FilePath baseFolderPath_ = "/var/lib/minidocker/images";
+} // namespace
 ImageCreator::ImageCreator() {}
 
 ImageCreator::ImageCreator(std::vector<instructions::Instruction> instructions)

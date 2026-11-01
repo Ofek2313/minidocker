@@ -23,9 +23,6 @@ private:
        "https://dl-cdn.alpinelinux.org/alpine/latest-stable/releases/x86_64/"
        "alpine-minirootfs-3.24.0-x86_64.tar.gz"}};
 
-  const minidocker::FilePath tempFile_ = "/tmp/base.tar.gz";
-
-  minidocker::FilePath baseFolderPath_ = "/var/lib/minidocker/images";
   minidocker::FilePath imageFolderPath_;
 
   Json envVariables_;
