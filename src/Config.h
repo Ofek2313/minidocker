@@ -17,7 +17,7 @@ template <typename T> void checkErr(T ret, const std::string &msg) {
 }
 
 using FilePath = std::filesystem::path;
-using CpuDuration = int64_t;
+using CpuDuration = int;
 using CpuQuota = int64_t;
 using CpuCores = float;
 using Memory = std::string;
@@ -43,7 +43,8 @@ struct ChildArgs {
   PipeHandler &syncHandler;
   ContainerConfig &containerConfig;
   std::vector<std::string> commands;
-  size_t containerId;
-};
+  std::string containerId;
 
 }; // namespace minidocker
+
+} // namespace minidocker

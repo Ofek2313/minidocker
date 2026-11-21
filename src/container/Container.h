@@ -6,6 +6,7 @@
 #include <sched.h>
 #include <semaphore>
 #include <string>
+#include <uuid.h>
 #include <vector>
 
 class CgroupManager;
@@ -18,7 +19,8 @@ private:
       cgroupManager_; // Constructor unknown at init so made it a ptr;
   PipeHandler pipeHandler_;
   PipeHandler syncPipe_;
-  size_t containerId_;
+  // size_t containerId_;
+  uuid_t containerId_;
   std::string imageName_;
 
   minidocker::ContainerConfig config_;
@@ -34,9 +36,10 @@ private:
   void InitCgroup(minidocker::CgroupConfig &config);
   void HandleErrors();
 
-  size_t GenerateHash();
   void PrepareEnvironment();
   void CreateChildProcess(std::vector<std::string> &commands);
+
+  static std::string UuidToText(const uuid_t id);
 
 public:
   void Run(std::vector<std::string> &commands);

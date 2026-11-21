@@ -10,10 +10,15 @@
 #include <string>
 #include <system_error>
 
-CgroupManager::CgroupManager(size_t containerId,
-                             minidocker::CgroupConfig &config) {
+namespace {
 
-  cgroupPath_ = "/sys/fs/cgroup/minidocker-" + std::to_string(containerId);
+constexpr std::string_view kCGroupDefaultPath = "/sys/fs/cgroup/minidocker-";
+}
+
+CgroupManager::CgroupManager(std::string_view containerId,
+                             minidocker::CgroupConfig &config)
+    : cgroupPath_(std::string(kCGroupDefaultPath).append(containerId)) {
+
   CreateCgroup();
   LimitMemoryUsage(config.memoryLimit);
   LimitCpuBanwidth(config.cores, config.period);
@@ -64,7 +69,7 @@ void CgroupManager::AddProc(pid_t processId) {
   outFile << processId << '\n';
 }
 void CgroupManager::LimitCpuBanwidth(minidocker::CpuCores cores,
-                                     minidocker::CpuQuota period = 100000) {
+                                     minidocker::CpuDuration period = 100000) {
 
   minidocker::FilePath cpuPath = cgroupPath_ / ("cpu.max");
   minidocker::CpuQuota quota = cores * period;

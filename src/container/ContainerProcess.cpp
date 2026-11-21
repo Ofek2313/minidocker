@@ -85,7 +85,9 @@ void ContainerProcess::Run() {
 
     if (childArgs_->containerConfig.attachFlag) {
 
-      size_t bytes = childArgs_->syncHandler.Read();
+      char buffer[8192];
+      ssize_t bytes = childArgs_->syncHandler.Read(
+          buffer); // need to fix function returns bool not bytes read
       if (bytes < 0) {
         throw std::runtime_error("Error in reading pipe");
       }

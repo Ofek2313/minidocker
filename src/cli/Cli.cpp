@@ -1,8 +1,10 @@
 #include "cli/Cli.h"
+#include "app/App.h"
 #include <algorithm>
 #include <array>
 #include <complex>
 #include <iostream>
+#include <meta>
 #include <optional>
 #include <sstream>
 #include <string>
@@ -17,8 +19,8 @@ using parametersList = std::vector<std::string_view>;
 constexpr std::array<std::string_view, 4> validCommands = {"build", "run",
                                                            "status", "kill"};
 
-const std::unordered_map<std::string_view, parametersList> vaildParams = {
-    {"run", {"hello", "name"}}};
+const std::unordered_map<std::string_view, parametersList> validParams = {
+    {"run", {"image", "name", "detached"}}, {"build", {"name"}}};
 } // namespace
 
 bool Cli::IsValidCommand(std::string_view command) const {
@@ -29,7 +31,7 @@ bool Cli::IsValidCommand(std::string_view command) const {
 
 bool Cli::IsParamValid(std::string_view parameter,
                        std::string_view command) const {
-  parametersList commandParamList = vaildParams.at(command);
+  parametersList commandParamList = validParams.at(command);
   auto it =
       std::find(commandParamList.begin(), commandParamList.end(), parameter);
   return it != commandParamList.end();
@@ -83,39 +85,89 @@ std::vector<std::string> Cli::Split(const std::string &string, char splitChar) {
 
 std::optional<std::string_view> Cli::GetParameter(std::string_view flag) const {
   // check if flag exist
-  auto itr = std::find(args_.begin(), args_.end(), flag);
+  // auto itr = std::find(args_.begin(), args_.end(), flag);
 
-  if (itr == args_.end()) {
+  // if (itr == args_.end()) {
 
-    for (std::string_view arg : args_) {
+  for (std::string_view arg : args_) {
 
-      if (arg.size() > flag.size() && arg.starts_with(flag) &&
-          arg[flag.size()] == '=') {
-        std::cout << arg.substr(flag.size() + 1);
-        return arg.substr(flag.size() + 1);
-      }
-      // if we find the paramteer leading with -- then split
-      // the string and with a "=" check if it does
-      // exist(vector length == 2), and return it;
+    if (arg.size() > flag.size() && arg.starts_with(flag) &&
+        arg[flag.size()] == '=') {
+      std::cout << arg.substr(flag.size() + 1);
+      return arg.substr(flag.size() + 1);
     }
-
-    // for (auto it = parameterizedString.begin(); it <
-    // parameterizedString.end();
-    //      ++it) {
-    // }
-    //  itr =
-    //  std::find(parameterizedString.begin(),parameterizedString.end(),flag);
-    return std::nullopt;
+    // if we find the paramteer leading with -- then split
+    // the string and with a "=" check if it does
+    // exist(vector length == 2), and return it;
   }
 
-  if (std::next(itr) == args_.end())
-    return std::nullopt;
+  // for (auto it = parameterizedString.begin(); it <
+  // parameterizedString.end();
+  //      ++it) {
+  // }
+  //  itr =
+  //  std::find(parameterizedString.begin(),parameterizedString.end(),flag);
+  return std::nullopt;
+  //}
 
-  return *(std::next(itr));
+  // if (std::next(itr) == args_.end())
+  // return std::nullopt;
+
+  // return *(std::next(itr));
 
   // check if follow up parameters exist
   //
   // find it in the args make sure in bounds and return
 }
 
-void Cli::Run() {}
+std::unordered_map<std::string, std::string> Cli::ParaseArgs() {
+  std::unordered_map<std::string, std::string> ParasedArgs;
+  std::string_view command = args_.at(0);
+  for (std::string_view param : validParams.at(command)) {
+    auto value = GetParameter(param);
+    if (value.has_value()) {
+      ParasedArgs.try_emplace(std::string(param), std::string(value.value()));
+    }
+  }
+  return ParasedArgs;
+}
+
+minidocker::RunOptions Cli::BuildFromArgs(Options ParasedArgs) {
+
+  minidocker::RunOptions RunOptions;
+  auto setFoundValue = [&](const std::string &arg, auto &opt) {
+    if (auto itr = ParasedArgs.find(arg); itr != ParasedArgs.end()) {
+      using StrippedType = std::decay_t<decltype(opt)>;
+      if constexpr (std::is_same_v<StrippedType, std::string>) {
+        opt = ParasedArgs.at(itr->second);
+      } else if constexpr (std::is_same_v<StrippedType, bool>) {
+        opt = (ParasedArgs.at(itr->second) == "true");
+      } else if constexpr (std::is_same_v<StrippedType, int>) {
+        opt = std::stoi(ParasedArgs.at(itr->second));
+      }
+    }
+  };
+
+  setFoundValue("name", RunOptions.name);
+  setFoundValue("image", RunOptions.image);
+  setFoundValue("detached", RunOptions.detached);
+  setFoundValue("memory", RunOptions.memory);
+  setFoundValue("cores", RunOptions.cores);
+  setFoundValue("duration", RunOptions.duration);
+
+  return RunOptions;
+}
+
+void Cli::Interpret() {
+
+  ValidateParameters();
+  Options ParasedArgs = ParaseArgs();
+
+  if (args_.at(0) == "run") {
+    minidocker::RunOptions RunOptions = BuildFromArgs(ParasedArgs);
+
+    App app;
+    app.Init();
+    app.Run();
+  }
+}

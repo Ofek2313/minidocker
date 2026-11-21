@@ -1,3 +1,5 @@
+#pragma once
+#include "shared/Options.h"
 #include <array>
 #include <filesystem>
 #include <string>
@@ -13,4 +15,8 @@ private:
 public:
   void Init(); // Create app files in /var/lib, and create log files.
   void Run();
+
+  App(minidocker::RunOptions &runOptions);
+  App(minidocker::BuildOptions &buildOptions);
+  App() = default;
 };

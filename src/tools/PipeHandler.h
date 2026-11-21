@@ -1,23 +1,23 @@
 #pragma once
 #include "FileDescriptor.h"
+#include <span>
+#include <sys/types.h>
 
 class PipeHandler {
 private:
   char readBuffer_[8192];
   FileDescriptor readDescriptor_;
   FileDescriptor writeDescriptor_;
-  bool isPipe_ = false;
 
 private:
   bool IsOpen() const;
 
 public:
   PipeHandler();
-  ~PipeHandler();
 
   void OpenPipe();
-  bool Write(const char *bytes, size_t length);
-  size_t Read();
+  ssize_t Write(const char *bytes, size_t length);
+  ssize_t Read(std::span<char> buffer) const;
 
   const char *ReadBuffer() const;
 

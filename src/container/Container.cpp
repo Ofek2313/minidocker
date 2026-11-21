@@ -17,35 +17,30 @@
 #include <sys/syscall.h>
 #include <sys/wait.h>
 #include <unistd.h>
+#include <uuid.h>
 #include <vector>
 
 Container::~Container() = default;
 
+std::string Container::UuidToText(const uuid_t id) {
+  constexpr int kUuidStringSize = 37;
+  char out[kUuidStringSize];
+  uuid_unparse_lower(id, out);
+  return std::string(out);
+}
+
 Container::Container(minidocker::ContainerConfig config)
     : config_{std::move(config)} {}
-
-size_t Container::GenerateHash() {
-  std::string randomString = "";
-  constexpr char letters[]{"ABCDEFGHIJKLMNOPQRSTUVWXYZ"};
-  std::srand(std::time(nullptr));
-  for (int i{0}; i < 8; i++) {
-    int random_num = std::rand() % sizeof(letters);
-    randomString.push_back(letters[random_num]);
-  }
-  std::hash<std::string> stringHasher;
-
-  size_t HashedString = stringHasher(randomString);
-  return HashedString;
-}
 
 void Container::HandleErrors() {
 
   std::string errText = "";
-  size_t bytes = 0;
-  while ((bytes = pipeHandler_.Read()) > 0) {
-    errText.append(pipeHandler_.ReadBuffer(), bytes);
+  ssize_t bytes = 0;
+  char buffer[8192];
+  while ((bytes = pipeHandler_.Read(buffer)) > 0) {
+    errText.append(pipeHandler_.ReadBuffer(),
+                   bytes); // needs to know how many bytes read
   }
-  std::cerr << errText << std::endl;
   pipeHandler_.CloseRead();
 }
 
@@ -61,15 +56,15 @@ void Container::PrepareEnvironment() {
 
   pipeHandler_.OpenPipe();
 
-  containerId_ = GenerateHash();
+  uuid_generate(containerId_);
 
   minidocker::FilePath rootPath =
-      basePath_ / "containers" / std::to_string(containerId_);
+      basePath_ / "containers" / UuidToText(containerId_);
 
   std::filesystem::create_directories(rootPath);
 
-  cgroupManager_ =
-      std::make_unique<CgroupManager>(containerId_, config_.cgroupConfig);
+  cgroupManager_ = std::make_unique<CgroupManager>(UuidToText(containerId_),
+                                                   config_.cgroupConfig);
 }
 
 void Container::CreateChildProcess(std::vector<std::string> &commands) {
@@ -80,7 +75,7 @@ void Container::CreateChildProcess(std::vector<std::string> &commands) {
   constexpr std::size_t stackSize = 1024 * 1024;
   auto stack = std::make_unique<std::byte[]>(stackSize);
   minidocker::ChildArgs childArgs = {pipeHandler_, syncPipe_, config_, commands,
-                                     containerId_};
+                                     UuidToText(containerId_)};
   pid_t pid =
       clone(child_function, stack.get() + stackSize, ns.getFlags(), &childArgs);
 

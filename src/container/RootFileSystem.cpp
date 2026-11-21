@@ -1,5 +1,6 @@
 #include "container/RootFileSystem.h"
 #include "Config.h"
+#include "shared/Paths.h"
 #include "tools/Downloader.h"
 #include <cerrno>
 #include <cstddef>
@@ -7,7 +8,6 @@
 #include <filesystem>
 #include <fstream>
 #include <iostream>
-#include <string_view>
 #include <sys/mount.h>
 #include <sys/syscall.h>
 #include <syscall.h>
@@ -19,7 +19,7 @@ void RootFileSystem::CreateLogFile() {
 
   // std::ofstream logFile("/var/log/minidocker.log");
   if (!std::filesystem::exists(logPath_)) {
-    std::ofstream logFile("/var/log/minidocker.log");
+    std::ofstream logFile(std::string(kLogFilePath).c_str());
     if (!logFile) {
       throw std::system_error(errno, std::generic_category(),
                               "Failed to create log file");
@@ -32,7 +32,8 @@ void RootFileSystem::CreateLogFile() {
 
 void RootFileSystem::MountImage() {
 
-  minidocker::FilePath imagePath = "/var/lib/minidocker/images/" + imageName_;
+  minidocker::FilePath imagePath =
+      std::string(kImagePathDefault) + "/" + imageName_;
 
   overlayFiles_ = {imagePath, rootPath_ / "upper", rootPath_ / "work",
                    rootPath_ / "merged"};
@@ -120,8 +121,7 @@ void RootFileSystem::SetUpRootFileSystem() {
   SetRoot();
   MountProcFolder();
 }
-RootFileSystem::RootFileSystem(size_t containerId, std::string imageName)
-    : containerId_{std::move(containerId)}, imageName_{std::move(imageName)} {
-
-  rootPath_ = "/var/lib/minidocker/containers/" + std::to_string(containerId_);
-}
+RootFileSystem::RootFileSystem(std::string containerId, std::string imageName)
+    : containerId_{std::move(containerId)}, imageName_{std::move(imageName)},
+      rootPath_(
+          std::string(kRootPathDefault).append("/").append(containerId_)) {}

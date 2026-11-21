@@ -17,7 +17,7 @@ private:
   void LimitMemorySwap(minidocker::Memory swapLimit);
 
 public:
-  CgroupManager(size_t containerId, minidocker::CgroupConfig &config);
+  CgroupManager(std::string_view containerId, minidocker::CgroupConfig &config);
   void SetupCgroup(minidocker::CgroupConfig &config, pid_t procsId);
 
   void AddProc(pid_t processId);

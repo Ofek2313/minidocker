@@ -1,6 +1,7 @@
 #include "image/ImageCreator.h"
 #include "Config.h"
 #include "image/Instructions.h"
+#include "shared/Paths.h"
 #include <cstddef>
 #include <filesystem>
 #include <fstream>
@@ -28,10 +29,10 @@ void ImageCreator::CreateImageFolder(std::string_view imageName = {}) {
     uuid_generate(imageId);
     char uuidText[37];
     uuid_unparse(imageId, uuidText);
-    imageFolderPath_ = baseFolderPath_ / uuidText;
+    imageFolderPath_ = minidocker::FilePath(kImagePathDefault) / uuidText;
     std::cout << "No Image Name, Image created as:  " << uuidText << '\n';
   } else
-    imageFolderPath_ = baseFolderPath_ / imageName;
+    imageFolderPath_ = minidocker::FilePath(kImagePathDefault) / imageName;
 
   if (!std::filesystem::create_directory(imageFolderPath_)) {
     std::cerr << "Image with that name already exists" << '\n';
