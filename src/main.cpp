@@ -5,8 +5,9 @@ int main(int argc, char *argv[]) {
 
   // App app;
   // app.Init();
+  // app.Build();
   // app.Run();
 
   Cli cli(argc, argv);
-  cli.GetParameter("name");
+  cli.Interpret();
 }

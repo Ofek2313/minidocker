@@ -1,5 +1,6 @@
 #include "cli/Cli.h"
 #include "app/App.h"
+#include "shared/Options.h"
 #include <algorithm>
 #include <array>
 #include <complex>
@@ -58,6 +59,7 @@ bool Cli::ValidateParameters() {
       return pos != std::string::npos;
     }
   }
+  std::cout << "Passed" << std::endl;
   return true;
 }
 
@@ -157,17 +159,36 @@ minidocker::RunOptions Cli::BuildFromArgs(Options ParasedArgs) {
 
   return RunOptions;
 }
+std::vector<std::string> Cli::ParaseCommands() {
+  std::vector<std::string> commands;
+  for (auto itr = args_.rbegin(); itr != args_.rend(); ++itr) {
+    if ((*itr).starts_with("--")) {
+      break;
+    }
+    std::cout << *itr << '\n';
+    commands.push_back(std::string((*itr)));
+  }
+  std::reverse(commands.begin(), commands.end());
+  return commands;
+}
 
 void Cli::Interpret() {
 
-  ValidateParameters();
+  if (!ValidateParameters()) {
+    std::cerr << "Parameters Are Invalid" << '\n';
+    return;
+  }
   Options ParasedArgs = ParaseArgs();
 
+  App app;
+  app.Init();
+  std::cout << args_.at(0) << std::endl;
   if (args_.at(0) == "run") {
-    minidocker::RunOptions RunOptions = BuildFromArgs(ParasedArgs);
-
-    App app;
-    app.Init();
-    app.Run();
+    minidocker::RunOptions runOptions = BuildFromArgs(ParasedArgs);
+    runOptions.commands = ParaseCommands();
+    app.Run(runOptions);
+  } else if (args_.at(0) == "build") {
+    minidocker::BuildOptions buildOptions;
+    app.Build(buildOptions);
   }
 }

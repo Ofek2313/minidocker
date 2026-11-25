@@ -8,6 +8,7 @@
 #include <filesystem>
 #include <fstream>
 #include <iostream>
+#include <string>
 #include <sys/mount.h>
 #include <sys/syscall.h>
 #include <syscall.h>
@@ -33,13 +34,15 @@ void RootFileSystem::CreateLogFile() {
 void RootFileSystem::MountImage() {
 
   minidocker::FilePath imagePath =
-      std::string(kImagePathDefault) + "/" + imageName_;
+      std::string(kImagePathDefault) + "/" + imageName_ + "/upper";
 
-  overlayFiles_ = {imagePath, rootPath_ / "upper", rootPath_ / "work",
-                   rootPath_ / "merged"};
-
+  minidocker::OverlayFiles overlayFiles = {{imagePath},
+                                           rootPath_ / "upper",
+                                           rootPath_ / "work",
+                                           rootPath_ / "merged"};
+  std::cout << rootPath_ << std::endl;
   for (const auto &dir :
-       {overlayFiles_.merged, overlayFiles_.upper, overlayFiles_.work}) {
+       {overlayFiles.merged, overlayFiles.upper, overlayFiles.work}) {
 
     std::filesystem::create_directories(dir);
   }
@@ -47,26 +50,20 @@ void RootFileSystem::MountImage() {
   //    mount(imagePath.c_str(), rootPath_.c_str(), NULL, MS_BIND | MS_REC,
   //    NULL),
   //   "Mounting Image Failed");
-  std::cout << "Before" << std::endl;
-  std::string options = "lowerdir=" + overlayFiles_.lower.string() +
-                        ",upperdir=" + overlayFiles_.upper.string() +
-                        ",workdir=" + overlayFiles_.work.string();
-
-  minidocker::checkErr(mount("overlay", overlayFiles_.merged.c_str(), "overlay",
-                             0, options.c_str()),
-                       "Overlay filesystem failed");
-  std::cout << "After" << std::endl;
+  overlayFs_.emplace(overlayFiles, minidocker::CleanUpCode::Full);
+  overlayFs_->MountOverlay();
 }
 
 bool RootFileSystem::SetRoot() {
 
+  const std::string merged = std::string(rootPath_) + "/merged";
   // mount(rootPath_.c_str(), rootPath_.c_str(), NULL, MS_BIND, NULL);
-  std::string oldRootPath = std::string(overlayFiles_.merged) + "/oldroot";
+  std::string oldRootPath = merged + "/oldroot";
   std::filesystem::create_directory(oldRootPath);
 
-  minidocker::checkErr(syscall(SYS_pivot_root, overlayFiles_.merged.c_str(),
-                               oldRootPath.c_str()),
-                       "Failed To Pivot Root");
+  minidocker::checkErr(
+      syscall(SYS_pivot_root, merged.c_str(), oldRootPath.c_str()),
+      "Failed To Pivot Root");
 
   minidocker::checkErr(chdir("/"), "Failed To Change Root Folder");
 
@@ -76,7 +73,6 @@ bool RootFileSystem::SetRoot() {
   mount(NULL, "/", NULL, MS_REMOUNT | MS_BIND | MS_RDONLY, NULL);
   return true;
 }
-
 void RootFileSystem::DownloadAlpineEnvironment() {
 
   Downloader downloader;
@@ -104,9 +100,11 @@ void RootFileSystem::MountProcFolder() {
 }
 void RootFileSystem::SetUpRootFileSystem() {
 
+  std::cout << "Testtttt" << '\n';
   minidocker::checkErr(
       mount(nullptr, "/", nullptr, MS_REC | MS_PRIVATE, nullptr),
       "Failed To Privitaize Mounts");
+  std::cout << "Testtttt" << '\n';
   // CreateLogFile();
   try {
 
@@ -116,12 +114,18 @@ void RootFileSystem::SetUpRootFileSystem() {
   } catch (const std::exception &ex) {
     std::cout << ex.what() << std::endl;
   }
+  std::cout << "1" << '\n';
   MountImage();
   // DownloadAlpineEnvironment();
+  std::cout << "2" << '\n';
   SetRoot();
+
+  std::cout << "3" << '\n';
   MountProcFolder();
 }
 RootFileSystem::RootFileSystem(std::string containerId, std::string imageName)
     : containerId_{std::move(containerId)}, imageName_{std::move(imageName)},
       rootPath_(
-          std::string(kRootPathDefault).append("/").append(containerId_)) {}
+          std::string(kRootPathDefault).append("/").append(containerId_)) {
+  std::cout << containerId_ << '\n';
+}

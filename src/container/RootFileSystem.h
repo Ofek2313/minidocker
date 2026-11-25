@@ -1,21 +1,19 @@
+#pragma once
 #include "Config.h"
+#include "tools/OverlayFs.h"
 #include <array>
+#include <optional>
 #include <string_view>
 #include <unordered_map>
 
 class RootFileSystem {
 
 private:
-  struct OverlayFs {
-    minidocker::FilePath lower;
-    minidocker::FilePath upper;
-    minidocker::FilePath work;
-    minidocker::FilePath merged;
+  std::optional<OverlayFs> overlayFs_;
 
-  } overlayFiles_;
+  const std::string containerId_;
   minidocker::FilePath rootPath_;
   const std::string imageName_;
-  const std::string containerId_;
   minidocker::FilePath logPath_ = "/var/log/minidocker.log";
   void CreateLogFile();
   void MountImage();

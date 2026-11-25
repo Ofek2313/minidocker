@@ -42,6 +42,7 @@ void Container::HandleErrors() {
                    bytes); // needs to know how many bytes read
   }
   pipeHandler_.CloseRead();
+  std::cout << errText << '\n';
 }
 
 int Container::child_function(void *args) {
@@ -76,6 +77,7 @@ void Container::CreateChildProcess(std::vector<std::string> &commands) {
   auto stack = std::make_unique<std::byte[]>(stackSize);
   minidocker::ChildArgs childArgs = {pipeHandler_, syncPipe_, config_, commands,
                                      UuidToText(containerId_)};
+  std::cout << UuidToText(containerId_) << std::endl;
   pid_t pid =
       clone(child_function, stack.get() + stackSize, ns.getFlags(), &childArgs);
 
@@ -89,6 +91,7 @@ void Container::Run(std::vector<std::string> &commands) {
 
   CreateChildProcess(commands);
 
+  config_.attachFlag = false;
   if (config_.attachFlag) {
 
     syncPipe_.Write("W", 1);

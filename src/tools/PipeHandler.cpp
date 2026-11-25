@@ -15,12 +15,17 @@ void PipeHandler::OpenPipe() {
                             "Pipe Failed To Open");
   }
 
-  readDescriptor_ = FileDescriptor(pipeFd[0]);
-  writeDescriptor_ = FileDescriptor(pipeFd[1]);
+  readDescriptor_ = std::make_shared<FileDescriptor>(FileDescriptor(pipeFd[0]));
+  writeDescriptor_ =
+      std::make_shared<FileDescriptor>(FileDescriptor(pipeFd[1]));
 }
 
 ssize_t PipeHandler::Write(const char *bytes, size_t length) {
-  size_t bytesWritten = write(writeDescriptor_.get(), bytes, length);
+
+  if (writeDescriptor_->get() == -1)
+    return 0;
+
+  size_t bytesWritten = write(writeDescriptor_->get(), bytes, length);
 
   if (bytesWritten < 0)
     throw std::system_error(errno, std::generic_category(), "Write Failed");
@@ -29,8 +34,12 @@ ssize_t PipeHandler::Write(const char *bytes, size_t length) {
 }
 
 ssize_t PipeHandler::Read(std::span<char> buffer) const {
+
+  if (readDescriptor_->get() == -1)
+    return 0;
+
   ssize_t bytesRead =
-      read(readDescriptor_.get(), buffer.data(), buffer.size_bytes());
+      read(readDescriptor_->get(), buffer.data(), buffer.size_bytes());
 
   if (bytesRead < 0)
     throw std::system_error(errno, std::generic_category(), "Read Failed");

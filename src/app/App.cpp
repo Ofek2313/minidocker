@@ -3,6 +3,7 @@
 #include "container/Container.h"
 #include "image/ImageCreator.h"
 #include "image/SettingsManager.h"
+#include "shared/Options.h"
 #include <exception>
 #include <filesystem>
 #include <iostream>
@@ -19,20 +20,27 @@ void App::Init() {
   }
 }
 
-void App::Run() {
+App::App(minidocker::RunOptions &runOptions) {}
+
+void App::Build(minidocker::BuildOptions &buildOptions) {
   SettingsManager settingsManager;
 
   ImageCreator imageCreator(settingsManager.GetInstructions());
   imageCreator.CreateImage();
+}
 
-  minidocker::CgroupConfig Cgroupconfig{100000, 1, "512M"};
-  minidocker::ContainerConfig config{
+void App::Run(minidocker::RunOptions &runOptions) {
+
+  minidocker::CgroupConfig Cgroupconfig{runOptions.duration, runOptions.cores,
+                                        runOptions.memory};
+  config_ = {
       Cgroupconfig,
-      "test",
-      false,
+      runOptions.image,
+      runOptions.detached,
   };
-  Container container(config);
+  Container container(config_);
   container.Init();
-  std::vector<std::string> a = {"/bin/printenv", "VAR"};
-  container.Run(a);
+  std::cout << "running... " << std::endl;
+  std::vector<std::string> a = {"/bin/echo", "hello"};
+  container.Run(runOptions.commands);
 }

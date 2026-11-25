@@ -41,4 +41,5 @@ public:
   ImageCreator();
   ImageCreator(std::vector<instructions::Instruction> instructions);
   void CreateImage();
+  ~ImageCreator();
 };

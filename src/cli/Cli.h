@@ -25,6 +25,7 @@ private:
   bool ValidateParameters();
   std::vector<std::string> Split(const std::string &string, char splitChar);
   Options ParaseArgs();
+  std::vector<std::string> ParaseCommands();
 
   minidocker::RunOptions BuildFromArgs(Options ParasedArgs);
 };

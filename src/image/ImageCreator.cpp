@@ -52,11 +52,13 @@ void ImageCreator::CreateEnvFile() {
 }
 
 void ImageCreator::CreateImage() {
-  CreateImageFolder("test");
+  CreateImageFolder("image1");
   instructions::From from{instructions::BaseImage::Alpine};
+  instructions::Add add{"/test"};
   instructions::Env env{"VAR", "5"};
   ApplyInstruction(from);
   ApplyInstruction(env);
+  ApplyInstruction(add);
   for (auto &instruction : instructions_) {
 
     std::visit(
@@ -80,8 +82,9 @@ void ImageCreator::ApplyInstruction(const instructions::Copy &instruction) {
                         std::filesystem::copy_options::overwrite_existing);
 }
 void ImageCreator::ApplyInstruction(const instructions::Add &instruction) {
-
-  if (!std::filesystem::create_directories(instruction.folderPath)) {
+  const minidocker::FilePath addFolderPath =
+      imageFolderPath_ / "merged" / instruction.folderPath;
+  if (!std::filesystem::create_directories(addFolderPath)) {
     return;
   }
 }
@@ -110,5 +113,26 @@ void ImageCreator::ApplyInstruction(const instructions::From &instruction) {
       basePath); // Download from web if does not exists, must also save a
                  // cahce of already downlaoded and preform a check.
 
-  mount(basePath.c_str(), imageFolderPath_.c_str(), NULL, MS_BIND, NULL);
+  // mount(basePath.c_str(), imageFolderPath_.c_str(), NULL, MS_BIND, NULL);
+
+  const std::string kWorkPath = std::string(imageFolderPath_) + "/work";
+  const std::string kMergedPath = std::string(imageFolderPath_) + "/merged";
+  const std::string kUpperPath = std::string(imageFolderPath_) + "/upper";
+  std::cout << imageFolderPath_ << '\n';
+  std::filesystem::create_directories(kWorkPath);
+  std::filesystem::create_directories(kMergedPath);
+  std::filesystem::create_directories(kUpperPath);
+  std::string options = "lowerdir=" + basePath.string() +
+                        ",upperdir=" + kUpperPath + ",workdir=" + kWorkPath;
+  minidocker::checkErr(
+      mount("overlay", kMergedPath.c_str(), "overlay", 0, options.c_str()),
+      "Overlay filesystem failed");
+}
+ImageCreator::~ImageCreator() {
+
+  const std::string kWorkPath = std::string(imageFolderPath_) + "/work";
+  const std::string kMergedPath = std::string(imageFolderPath_) + "/merged";
+  minidocker::checkErr(umount(kMergedPath.c_str()), "Failed to unmount image");
+  std::filesystem::remove(kMergedPath);
+  std::filesystem::remove_all(kWorkPath);
 }

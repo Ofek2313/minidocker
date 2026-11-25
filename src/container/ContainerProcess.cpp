@@ -17,7 +17,9 @@
 
 ContainerProcess::ContainerProcess(minidocker::ChildArgs *childArgs,
                                    minidocker::ContainerConfig containerConfig)
-    : childArgs_{childArgs}, containerConfig_{containerConfig} {};
+    : childArgs_{childArgs}, containerConfig_{containerConfig} {
+  std::cout << childArgs_->containerId << '\n';
+};
 
 void ContainerProcess::ReDirectFileDescriptors() {
 
@@ -47,7 +49,7 @@ std::vector<char *> ContainerProcess::ParseCommands() {
 void ContainerProcess::ExecuteCommands() {
   if (!childArgs_->commands.empty()) {
     std::vector<char *> commands = ParseCommands();
-
+    std::cout << "Execution" << std::endl;
     if (execvp(commands[0], commands.data()) == -1) {
       throw std::system_error(errno, std::generic_category(),
                               "Command Execution Failed");
@@ -76,13 +78,20 @@ void ContainerProcess::CopyBinary(minidocker::FilePath binaryPath) {
 void ContainerProcess::Run() {
 
   try {
+    std::cout << "Running child process" << '\n';
     childArgs_->syncHandler.CloseWrite();
     childArgs_->pipeHandler.CloseRead();
-    if (childArgs_->containerConfig.attachFlag)
-      Detach();
-    RootFileSystem rfs(childArgs_->containerId, containerConfig_.imageName);
-    rfs.SetUpRootFileSystem();
+    childArgs_->containerConfig.attachFlag = false;
+    if (childArgs_->containerConfig.attachFlag) {
+      std::cout << "Rootfs init" << '\n';
 
+      Detach();
+    }
+
+    std::cout << "Rootfs init" << '\n';
+    RootFileSystem rfs(childArgs_->containerId, "image1");
+    rfs.SetUpRootFileSystem();
+    std::cout << "Rootfs init" << '\n';
     if (childArgs_->containerConfig.attachFlag) {
 
       char buffer[8192];
